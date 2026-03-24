@@ -1,0 +1,22 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: identity-service
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/tms_auth_db
+    username: tms_auth_user
+    password: auth_pass_123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+jwt:
+  secret: a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd
+  expiry-ms: 3600000
