@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/001-create-projects.yaml
+  - include:
+      file: db/changelog/002-create-weekly-timesheets.yaml
+  - include:
+      file: db/changelog/003-create-timesheet-entries.yaml
+  - include:
+      file: db/changelog/004-create-timesheet-audit-logs.yaml

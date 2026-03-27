@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005
+      author: dtron
+      changes:
+        - createTable:
+            tableName: announcements
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+
+              - column:
+                  name: title
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: body
+                  type: TEXT
+
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+
+              - column:
+                  name: published_at
+                  type: DATETIME
+
+              - column:
+                  name: expires_at
+                  type: DATETIME

@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/001-create-leave-types.yaml
+  - include:
+      file: db/changelog/002-create-leave-balances.yaml
+  - include:
+      file: db/changelog/003-create-leave-requests.yaml
+  - include:
+      file: db/changelog/004-create-holidays.yaml
+  - include:
+      file: db/changelog/005-create-leave-audit-logs.yaml

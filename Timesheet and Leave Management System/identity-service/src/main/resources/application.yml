@@ -1,5 +1,6 @@
 server:
   port: 8081
+
 spring:
   application:
     name: identity-service
@@ -17,6 +18,28 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+    open-in-view: false
+
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
 jwt:
   secret: a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd
   expiry-ms: 3600000
+
+springdoc:
+  api-docs:
+    path: /auth/v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+  packages-to-scan:
+    - com.cap.identity.controller

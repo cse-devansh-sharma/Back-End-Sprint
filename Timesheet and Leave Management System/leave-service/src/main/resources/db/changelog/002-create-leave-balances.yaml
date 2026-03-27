@@ -1,0 +1,65 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002
+      author: tms
+      changes:
+        - createTable:
+            tableName: leave_balances
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: leave_type_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: year
+                  type: INT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: total_allotted
+                  type: DECIMAL(4,1)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: used
+                  type: DECIMAL(4,1)
+                  defaultValueNumeric: 0.0
+
+              - column:
+                  name: pending
+                  type: DECIMAL(4,1)
+                  defaultValueNumeric: 0.0
+
+              - column:
+                  name: carry_forwarded
+                  type: DECIMAL(4,1)
+                  defaultValueNumeric: 0.0
+
+        - addUniqueConstraint:
+            tableName: leave_balances
+            columnNames: user_id, leave_type_id, year
+            constraintName: uq_leave_balance
+
+        - addForeignKeyConstraint:
+            baseTableName: leave_balances
+            baseColumnNames: leave_type_id
+            referencedTableName: leave_types
+            referencedColumnNames: id
+            constraintName: fk_leave_balance_type

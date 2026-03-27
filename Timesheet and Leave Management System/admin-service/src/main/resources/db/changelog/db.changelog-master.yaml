@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/001-create-cost-centers.yaml
+  - include:
+      file: db/changelog/002-create-projects.yaml
+  - include:
+      file: db/changelog/003-create-leave-policies.yaml
+  - include:
+      file: db/changelog/004-create-approval-queue.yaml
+  - include:
+      file: db/changelog/005-create-announcements.yaml

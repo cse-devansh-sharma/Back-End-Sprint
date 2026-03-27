@@ -1,0 +1,56 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004
+      author: dtron
+      changes:
+        - createTable:
+            tableName: approval_queue
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+
+              - column:
+                  name: reference_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: reference_type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: requested_by
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: assigned_to
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: PENDING
+
+              - column:
+                  name: remark
+                  type: TEXT
+
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+              - column:
+                  name: actioned_at
+                  type: DATETIME

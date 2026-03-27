@@ -1,0 +1,100 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      routes:
+
+        # ── Identity Service (registered as IDENTITY-SERVICE in Eureka, port 8081) ──
+        - id: identity-service
+          uri: lb://IDENTITY-SERVICE        # ✅ matches Eureka name exactly
+          predicates:
+            - Path=/auth/**
+
+        # ── Timesheet Service (registered as TIMESHEET-SERVICE, port 8084) ──
+        - id: timesheet-service
+          uri: lb://TIMESHEET-SERVICE       # ✅ matches Eureka name exactly
+          predicates:
+            - Path=/timesheet/**
+
+
+        # ── Leave Service (registered as LEAVE-SERVICE, port 8083) ──
+        - id: leave-service
+          uri: lb://LEAVE-SERVICE           # ✅ matches Eureka name exactly
+          predicates:
+            - Path=/leave/**
+
+        # ── Admin Service (registered as ADMIN-SERVICE, port 8085) ──
+        - id: admin-service
+          uri: lb://ADMIN-SERVICE           # ✅ matches Eureka name exactly
+          predicates:
+            - Path=/admin/**
+
+        # ── Notification Service (registered as NOTIFICATION-SERVICE, port 8086) ──
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE    # ✅ matches Eureka name exactly
+          predicates:
+            - Path=/notifications/**, /notification/**
+
+
+      # Strip spoofed identity headers from incoming client requests
+      default-filters:
+        - RemoveRequestHeader=X-User-Id
+        - RemoveRequestHeader=X-User-Role
+        - RemoveRequestHeader=X-User-Email
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:8080"
+            allowedMethods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+            allowedHeaders: [Authorization, Content-Type, Accept, X-Requested-With, Origin]
+            allowCredentials: true
+            maxAge: 3600
+
+# ─── JWT ──────────────────────────────────────────────────────────────────────
+jwt:
+  secret: a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd
+  expiry-ms: 3600000
+
+# ─── Eureka ───────────────────────────────────────────────────────────────────
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# ─── Springdoc / Swagger ──────────────────────────────────────────────────────
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    config-url: /v3/api-docs/swagger-config
+    disable-swagger-default-url: true
+  api-docs:
+    enabled: true
+  webjars:
+    prefix: /webjars
+
+# ─── Actuator ─────────────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: always
+
+# ─── Logging ──────────────────────────────────────────────────────────────────
+logging:
+  level:
+    com.cap.apigateway: DEBUG
+    org.springframework.cloud.gateway: INFO

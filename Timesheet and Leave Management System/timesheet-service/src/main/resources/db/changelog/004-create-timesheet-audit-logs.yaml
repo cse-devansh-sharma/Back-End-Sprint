@@ -1,0 +1,41 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004
+      author: dtron
+      changes:
+        - createTable:
+            tableName: timesheet_audit_logs
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+
+              - column:
+                  name: timesheet_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: action
+                  type: VARCHAR(60)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: performed_by
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: performed_at
+                  type: DATETIME
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+              - column:
+                  name: remarks
+                  type: TEXT

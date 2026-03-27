@@ -25,9 +25,9 @@ public class JwtUtil {
     public String generateToken(User user) {
         return Jwts.builder()
                 .setSubject(String.valueOf(user.getId()))
+                .setSubject(String.valueOf(user.getId()))  // userId as subject
                 .claim("email", user.getEmail())
                 .claim("role", user.getRole().name())
-                .claim("employeeCode", user.getEmployeeCode())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiryMs))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)

@@ -1,0 +1,63 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003
+      author: dtron
+      changes:
+        - createTable:
+            tableName: leave_policies
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+
+              - column:
+                  name: policy_code
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: leave_type_code
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: year
+                  type: INT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: allotment_days
+                  type: DECIMAL(4,1)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: carry_forward_days
+                  type: DECIMAL(4,1)
+                  defaultValueNumeric: 0.0
+
+              - column:
+                  name: encashment_allowed
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+
+              - column:
+                  name: probation_exclusion
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+
+        - addUniqueConstraint:
+            tableName: leave_policies
+            columnNames: leave_type_code, year
+            constraintName: uq_leave_policy

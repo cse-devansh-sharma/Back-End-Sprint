@@ -1,0 +1,56 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: timesheet-service
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/tms_timesheet_db
+    username: tms_ts_user
+    password: ts_pass_123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    open-in-view: false
+
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        auto-startup: true
+        default-requeue-rejected: false
+
+jwt:
+  secret: a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd
+  expiry-ms: 3600000
+
+timesheet:
+  max-hours-per-day: 10
+  min-hours-per-week: 24
+  leave-service-url: http://localhost:8083
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+springdoc:
+  api-docs:
+    path: /timesheet/v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

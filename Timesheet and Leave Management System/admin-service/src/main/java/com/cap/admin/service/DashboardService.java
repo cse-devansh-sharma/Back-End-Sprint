@@ -1,0 +1,91 @@
+package com.cap.admin.service;
+
+import com.cap.admin.dto.*;
+import com.cap.admin.enums.ApprovalStatus;
+import com.cap.admin.repository.ApprovalQueueRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.LocalDate;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class DashboardService {
+
+    private final ApprovalQueueRepository approvalQueueRepository;
+    private final RestTemplate            restTemplate;
+
+    @Value("${admin.timesheet-service-url}")
+    private String timesheetServiceUrl;
+
+    @Value("${admin.leave-service-url}")
+    private String leaveServiceUrl;
+
+    /**
+     * Compliance summary: shows what % of submitted timesheets were approved
+     * for a manager's team in a date range.
+     * Queries only local approval_queue — no inter-service call needed.
+     */
+    public DashboardComplianceDTO getComplianceSummary(Long managerId) {
+        long total = approvalQueueRepository.countByAssignedToAndStatus(
+                managerId, ApprovalStatus.PENDING)
+                + approvalQueueRepository.countByAssignedToAndStatus(
+                managerId, ApprovalStatus.APPROVED)
+                + approvalQueueRepository.countByAssignedToAndStatus(
+                managerId, ApprovalStatus.REJECTED);
+
+        long approved = approvalQueueRepository.countByAssignedToAndStatus(
+                managerId, ApprovalStatus.APPROVED);
+
+        long pending = approvalQueueRepository.countByAssignedToAndStatus(
+                managerId, ApprovalStatus.PENDING);
+
+        double compliancePct = total == 0 ? 100.0
+                : Math.round((approved * 100.0 / total) * 10.0) / 10.0;
+
+        return DashboardComplianceDTO.builder()
+                .managerId(managerId)
+                .totalSubmitted(total)
+                .totalApproved(approved)
+                .totalPending(pending)
+                .compliancePercent(compliancePct)
+                .build();
+    }
+
+    /**
+     * Employee summary: fetches last timesheet status from timesheet-service
+     * and leave balance from leave-service.
+     * Graceful degradation — returns partial data if a service is unreachable.
+     */
+    public DashboardEmployeeSummaryDTO getEmployeeSummary(Long userId) {
+        DashboardEmployeeSummaryDTO summary = DashboardEmployeeSummaryDTO.builder()
+                .userId(userId)
+                .build();
+
+        // try fetching last timesheet info
+        try {
+            Object tsData = restTemplate.getForObject(
+                    timesheetServiceUrl + "/timesheet/history?page=0&size=1&userId=" + userId,
+                    Object.class);
+            summary.setLastTimesheetData(tsData);
+        } catch (Exception e) {
+            log.warn("[ADMIN] Could not fetch timesheet summary for user {}: {}", userId, e.getMessage());
+        }
+
+        // try fetching leave balances
+        try {
+            Object leaveData = restTemplate.getForObject(
+                    leaveServiceUrl + "/leave/balance/" + userId,
+                    Object.class);
+            summary.setLeaveBalanceData(leaveData);
+        } catch (Exception e) {
+            log.warn("[ADMIN] Could not fetch leave balance for user {}: {}", userId, e.getMessage());
+        }
+
+        return summary;
+    }
+}

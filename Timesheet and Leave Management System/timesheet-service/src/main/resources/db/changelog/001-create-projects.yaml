@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001
+      author: dtron
+      changes:
+        - createTable:
+            tableName: projects
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+
+              - column:
+                  name: project_code
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+                    unique: true
+
+              - column:
+                  name: name
+                  type: VARCHAR(150)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: cost_center
+                  type: VARCHAR(60)
+
+              - column:
+                  name: is_billable
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+
+              - column:
+                  name: synced_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
