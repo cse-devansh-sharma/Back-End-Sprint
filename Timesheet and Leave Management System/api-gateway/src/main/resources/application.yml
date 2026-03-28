@@ -60,14 +60,14 @@ spring:
 
 # ─── JWT ──────────────────────────────────────────────────────────────────────
 jwt:
-  secret: a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd
-  expiry-ms: 3600000
+  secret: ${JWT_SECRET:a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd}
+  expiry-ms: ${JWT_EXPIRY_MS:3600000}
 
 # ─── Eureka ───────────────────────────────────────────────────────────────────
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
   instance:
     prefer-ip-address: true
 

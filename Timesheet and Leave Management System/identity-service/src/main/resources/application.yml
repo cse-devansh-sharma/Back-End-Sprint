@@ -6,9 +6,9 @@ spring:
     name: identity-service
 
   datasource:
-    url: jdbc:mysql://localhost:3306/tms_auth_db
-    username: tms_auth_user
-    password: auth_pass_123
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3307/tms_auth_db}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:devdev}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -30,11 +30,11 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
 jwt:
-  secret: a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd
-  expiry-ms: 3600000
+  secret: ${JWT_SECRET:a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd}
+  expiry-ms: ${JWT_EXPIRY_MS:3600000}
 
 springdoc:
   api-docs:

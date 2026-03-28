@@ -10,7 +10,5 @@ public interface AnnouncementRepository
         extends JpaRepository<Announcement, Long> {
 
     // get active announcements that haven't expired
-    List<Announcement> findByIsActiveAndExpiresAtAfter(
-            Boolean isActive,
-            LocalDateTime now);
+    List<Announcement> findByIsActiveAndExpiresAtAfter(Boolean isActive, LocalDateTime now);
 }

@@ -26,6 +26,7 @@ public class LeaveController {
 
     // ── POST /leave/requests ─────────────────────────────
     // Employee applies for leave
+    @io.swagger.v3.oas.annotations.Operation(summary = "Create a new leave request")
     @PostMapping("/requests")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN', 'HR')")
     public ResponseEntity<LeaveRequestResponseDTO> createLeaveRequest(
@@ -39,22 +40,24 @@ public class LeaveController {
                 .body(leaveService.createLeaveRequest(request, userId));
     }
 
-    // ── GET /leave/requests/{id} ─────────────────────────
-    // Get single leave request details
-    @GetMapping("/requests/{id}")
+    // ── GET /leave/requests/{leaveId}/status ─────────────────────────
+    // Get single leave request status
+    @io.swagger.v3.oas.annotations.Operation(summary = "Check leave request status", description = "Enter the Leave request ID to check the status (like approved, pending, etc.)")
+    @GetMapping("/requests/{leaveId}/status")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN', 'HR')")
-    public ResponseEntity<LeaveRequestResponseDTO> getById(
-            @PathVariable Long id,
+    public ResponseEntity<LeaveStatusResponseDTO> getLeaveStatusById(
+            @io.swagger.v3.oas.annotations.Parameter(description = "Leave Request ID") @PathVariable("leaveId") Long leaveId,
             Authentication authentication) {
 
         Long userId = extractUserId(authentication);
         return ResponseEntity.ok(
-                leaveService.getLeaveRequestById(id, userId));
+                leaveService.getLeaveStatusById(leaveId, userId));
     }
 
     // ── GET /leave/history ───────────────────────────────
     // Paginated leave history for logged in employee
     // ?page=0&size=10&sort=submittedAt,desc
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get leave history", description = "Retrieve a paginated history of leave requests for the logged-in employee.")
     @GetMapping("/history")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN', 'HR')")
     public ResponseEntity<Page<LeaveRequestResponseDTO>> getLeaveHistory(
@@ -68,10 +71,11 @@ public class LeaveController {
 
     // ── DELETE /leave/requests/{id} ──────────────────────
     // Employee cancels their leave request
+    @io.swagger.v3.oas.annotations.Operation(summary = "Cancel a leave request")
     @DeleteMapping("/requests/{id}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN', 'HR')")
     public ResponseEntity<String> cancelLeave(
-            @PathVariable Long id,
+            @io.swagger.v3.oas.annotations.Parameter(description = "Leave Request ID") @PathVariable Long id,
             Authentication authentication) {
 
         Long userId = extractUserId(authentication);
@@ -81,10 +85,11 @@ public class LeaveController {
 
     // ── GET /leave/balance/{userId} ──────────────────────
     // Get leave balances by type for a user
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get leave balance", description = "Get leave balances by leave type for a specific user.")
     @GetMapping("/balance/{userId}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN', 'HR')")
     public ResponseEntity<List<LeaveBalanceDTO>> getBalances(
-            @PathVariable Long userId,
+            @io.swagger.v3.oas.annotations.Parameter(description = "User ID") @PathVariable Long userId,
             Authentication authentication) {
 
         // employee can only view own balance
@@ -105,6 +110,7 @@ public class LeaveController {
     // ── GET /leave/team-calendar ─────────────────────────
     // Manager views team leave calendar for a month
     // ?monthStart=2025-04-01&monthEnd=2025-04-30
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get team leave calendar")
     @GetMapping("/team-calendar")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'HR')")
     public ResponseEntity<List<TeamCalendarDTO>> getTeamCalendar(
@@ -124,6 +130,7 @@ public class LeaveController {
     // ── GET /leave/holidays ──────────────────────────────
     // Get holiday list for a year
     // ?year=2025
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get holidays list")
     @GetMapping("/holidays")
     public ResponseEntity<List<HolidayDTO>> getHolidays(
             @RequestParam(required = false)
@@ -137,13 +144,16 @@ public class LeaveController {
     }
 
     // ── GET /leave/users/{userId}/on-leave ───────────────
-    // Internal API used by TimesheetService to check if user is on leave
+    // API used by TimesheetService (and Managers/Admins/Employees) to check if user is on leave
+    @io.swagger.v3.oas.annotations.Operation(summary = "Check if user is on leave", description = "Returns a full JSON format response containing onLeave status.")
     @GetMapping("/users/{userId}/on-leave")
-    public ResponseEntity<Boolean> isOnLeave(
-            @PathVariable Long userId,
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN', 'HR')")
+    public ResponseEntity<OnLeaveStatusResponseDTO> isOnLeave(
+            @io.swagger.v3.oas.annotations.Parameter(description = "User ID") @PathVariable Long userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 
-        return ResponseEntity.ok(leaveService.isOnLeave(userId, date));
+        boolean isOnLeaveStatus = leaveService.isOnLeave(userId, date);
+        return ResponseEntity.ok(new OnLeaveStatusResponseDTO(isOnLeaveStatus));
     }
 
     // ── private helper — extract userId from JWT ─────────

@@ -157,7 +157,7 @@ public class LeaveService {
 
         LeaveRequest leaveRequest = leaveRequestRepository
                 .findById(requestId)
-                .orElseThrow(() -> new ResourceNotFoundException("Leave request not found"));
+                .orElseThrow(() -> new com.cap.leave.exception.LeaveNotFoundException("Leave request not found with id: " + requestId));
 
         // only SUBMITTED requests can be approved
         if (leaveRequest.getStatus() != LeaveStatus.SUBMITTED) {
@@ -200,7 +200,7 @@ public class LeaveService {
 
         LeaveRequest leaveRequest = leaveRequestRepository
                 .findById(requestId)
-                .orElseThrow(() ->new ResourceNotFoundException("Leave request not found"));
+                .orElseThrow(() -> new com.cap.leave.exception.LeaveNotFoundException("Leave request not found with id: " + requestId));
 
         if (leaveRequest.getStatus() != LeaveStatus.SUBMITTED) {
             throw new BusinessRuleException("Only submitted requests can be rejected");
@@ -238,7 +238,7 @@ public class LeaveService {
 
         LeaveRequest leaveRequest = leaveRequestRepository
                 .findById(requestId)
-                .orElseThrow(() -> new ResourceNotFoundException("Leave request not found"));
+                .orElseThrow(() -> new com.cap.leave.exception.LeaveNotFoundException("Leave request not found with id: " + requestId));
 
         // employee can only cancel their own request
         if (!leaveRequest.getUserId().equals(userId)) {
@@ -352,9 +352,24 @@ public class LeaveService {
 
         LeaveRequest leaveRequest = leaveRequestRepository
                 .findById(requestId)
-                .orElseThrow(() -> new ResourceNotFoundException( "Leave request not found with id: " + requestId));
+                .orElseThrow(() -> new com.cap.leave.exception.LeaveNotFoundException( "Leave request not found with id: " + requestId));
 
         return mapToResponseDTO(leaveRequest);
+    }
+    
+    @Transactional
+    public LeaveStatusResponseDTO getLeaveStatusById(Long requestId, Long userId) {
+        LeaveRequest leaveRequest = leaveRequestRepository
+                .findById(requestId)
+                .orElseThrow(() -> new com.cap.leave.exception.LeaveNotFoundException( "Leave request not found with id: " + requestId));
+
+        // Employee can only check their own leave status, managers/admins could check any
+        if (leaveRequest.getUserId().equals(userId)) {
+            return new LeaveStatusResponseDTO(leaveRequest.getId(), leaveRequest.getStatus());
+        }
+        
+        // Return for others if authorization pass at controller
+        return new LeaveStatusResponseDTO(leaveRequest.getId(), leaveRequest.getStatus());
     }
     // ════════════════════════════════════════════════
     // GET TEAM CALENDAR

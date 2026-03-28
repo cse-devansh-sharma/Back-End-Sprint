@@ -44,10 +44,7 @@ public class ApprovalService {
     public Page<ApprovalQueueResponseDTO> getPendingApprovals(Long managerId, Pageable pageable) {
 
         return approvalQueueRepository
-                .findByAssignedToAndStatus(
-                        managerId,
-                        ApprovalStatus.PENDING,
-                        pageable)
+                .findByAssignedToAndStatus(managerId, ApprovalStatus.PENDING,pageable)
                 .map(item -> {
                     ApprovalQueueResponseDTO dto =
                         ApprovalQueueResponseDTO.builder()
@@ -61,11 +58,7 @@ public class ApprovalService {
                             .build();
 
                     // enrich with details from other service
-                    dto.setDetails(
-                        fetchDetails(
-                            item.getReferenceId(),
-                            item.getReferenceType()));
-
+                    dto.setDetails(fetchDetails(item.getReferenceId(),item.getReferenceType()));
                     return dto;
                 });
     }

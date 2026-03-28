@@ -5,19 +5,22 @@ volumes:
   rabbitmq-data:
 
 services:
-  # ─────────────────────────────────────────────────────────
-  # INFRASTRUCTURE
-  # ─────────────────────────────────────────────────────────
+
+  # ── INFRASTRUCTURE ──────────────────────────────────────
   mysql-db:
     image: mysql:8.0
     container_name: mysql-db
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
-      - "3306:3306"
+      - "3307:3306"
+      # 3307 = your local machine port (use this in MySQL Workbench)
+      # 3306 = port inside Docker network (services use mysql-db:3306)
     volumes:
       - ./mysql-init:/docker-entrypoint-initdb.d
+        # init.sql runs automatically on FIRST startup only
       - mysql-data:/var/lib/mysql
+        # data persists on your local machine even after docker-compose down
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -31,8 +34,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
@@ -41,14 +44,17 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─────────────────────────────────────────────────────────
-  # DISCOVERY & ROUTING
-  # ─────────────────────────────────────────────────────────
+  # ── DISCOVERY & ROUTING ──────────────────────────────────
   eureka-server:
     build: ./eureka-server
     container_name: eureka-server
     ports:
       - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   api-gateway:
     build: ./api-gateway
@@ -57,48 +63,30 @@ services:
       - "8080:8080"
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRY_MS=${JWT_EXPIRY}
     depends_on:
-      - eureka-server
+      eureka-server:
+        condition: service_healthy
 
-  # ─────────────────────────────────────────────────────────
-  # MICROSERVICES
-  # ─────────────────────────────────────────────────────────
+  # ── MICROSERVICES ────────────────────────────────────────
   identity-service:
     build: ./identity-service
     container_name: identity-service
     ports:
       - "8081:8081"
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/tms_auth_db
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=root
-    depends_on:
-      mysql-db:
-        condition: service_healthy
-      eureka-server:
-        condition: service_started
-
-  admin-service:
-    build: ./admin-service
-    container_name: admin-service
-    ports:
-      - "8085:8085"
-    environment:
+      - SPRING_DATASOURCE_USERNAME=${AUTH_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${AUTH_DB_PASS}
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/tms_admin_db
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=root
-      - SPRING_RABBITMQ_HOST=rabbitmq-server
-      - ADMIN_TIMESHEET_SERVICE_URL=http://timesheet-service:8084
-      - ADMIN_LEAVE_SERVICE_URL=http://leave-service:8083
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRY_MS=${JWT_EXPIRY}
     depends_on:
       mysql-db:
         condition: service_healthy
-      rabbitmq-server:
-        condition: service_healthy
       eureka-server:
-        condition: service_started
+        condition: service_healthy
 
   leave-service:
     build: ./leave-service
@@ -106,18 +94,22 @@ services:
     ports:
       - "8083:8083"
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/tms_leave_db
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_DATASOURCE_USERNAME=${LEAVE_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${LEAVE_DB_PASS}
       - SPRING_RABBITMQ_HOST=rabbitmq-server
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASS}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRY_MS=${JWT_EXPIRY}
     depends_on:
       mysql-db:
         condition: service_healthy
       rabbitmq-server:
         condition: service_healthy
       eureka-server:
-        condition: service_started
+        condition: service_healthy
 
   timesheet-service:
     build: ./timesheet-service
@@ -125,19 +117,48 @@ services:
     ports:
       - "8084:8084"
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/tms_timesheet_db
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_DATASOURCE_USERNAME=${TS_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${TS_DB_PASS}
       - SPRING_RABBITMQ_HOST=rabbitmq-server
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASS}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - TIMESHEET_LEAVE_SERVICE_URL=http://leave-service:8083
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRY_MS=${JWT_EXPIRY}
     depends_on:
       mysql-db:
         condition: service_healthy
       rabbitmq-server:
         condition: service_healthy
       eureka-server:
-        condition: service_started
+        condition: service_healthy
+
+  admin-service:
+    build: ./admin-service
+    container_name: admin-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/tms_admin_db
+      - SPRING_DATASOURCE_USERNAME=${ADMIN_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${ADMIN_DB_PASS}
+      - SPRING_RABBITMQ_HOST=rabbitmq-server
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASS}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - ADMIN_TIMESHEET_SERVICE_URL=http://timesheet-service:8084
+      - ADMIN_LEAVE_SERVICE_URL=http://leave-service:8083
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRY_MS=${JWT_EXPIRY}
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      rabbitmq-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
 
   notification-service:
     build: ./notification-service
@@ -145,15 +166,19 @@ services:
     ports:
       - "8086:8086"
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/tms_notification_db
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_DATASOURCE_USERNAME=${NOTIF_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${NOTIF_DB_PASS}
       - SPRING_RABBITMQ_HOST=rabbitmq-server
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASS}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRY_MS=${JWT_EXPIRY}
     depends_on:
       mysql-db:
         condition: service_healthy
       rabbitmq-server:
         condition: service_healthy
       eureka-server:
-        condition: service_started
+        condition: service_healthy

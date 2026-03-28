@@ -7,11 +7,7 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Admin-service is the TOPOLOGY OWNER.
- * It declares all exchanges, queues, and bindings for the entire system.
- * Other services only declare the queues they listen to.
- */
+
 @Configuration
 public class RabbitMQConfig {
 
@@ -54,9 +50,6 @@ public class RabbitMQConfig {
     public static final String RK_LEAVE_APPROVE_CMD    = "leave.approve.command";
     public static final String RK_LEAVE_REJECT_CMD     = "leave.reject.command";
 
-    // ────────────────────────────────────────────────────────────
-    // EXCHANGES
-    // ────────────────────────────────────────────────────────────
 
     @Bean public TopicExchange timesheetEventsExchange() {
         return ExchangeBuilder.topicExchange(TIMESHEET_EVENTS_EXCHANGE).durable(true).build();
@@ -74,9 +67,7 @@ public class RabbitMQConfig {
         return ExchangeBuilder.topicExchange(NOTIFICATION_EVENTS_EXCHANGE).durable(true).build();
     }
 
-    // ────────────────────────────────────────────────────────────
-    // QUEUES (all durable, with Dead Letter Exchange)
-    // ────────────────────────────────────────────────────────────
+
 
     @Bean public Queue timesheetSubmittedQueue() {
         return QueueBuilder.durable(TIMESHEET_SUBMITTED_QUEUE).build();
@@ -121,9 +112,7 @@ public class RabbitMQConfig {
         return QueueBuilder.durable("master.data.sync.timesheet").build();
     }
 
-    // ────────────────────────────────────────────────────────────
-    // BINDINGS
-    // ────────────────────────────────────────────────────────────
+ 
 
     // timesheet.events → admin queue
     @Bean public Binding bindTimesheetSubmittedToAdmin() {
@@ -189,9 +178,7 @@ public class RabbitMQConfig {
                 .to(masterDataSyncExchange());
     }
 
-    // ────────────────────────────────────────────────────────────
-    // JSON Message Converter + RabbitTemplate
-    // ────────────────────────────────────────────────────────────
+
 
     @Bean
     public Jackson2JsonMessageConverter messageConverter() {
