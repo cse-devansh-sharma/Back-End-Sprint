@@ -50,6 +50,14 @@ public class TimesheetController {
         return ResponseEntity.ok(timesheetService.getWeeklyTimesheet(weekStart, userId));
     }
 
+    // ── GET /timesheet/weeks/id/{id} ─────────────────
+    // Fetch weekly timesheet by ID - used by Admin Service
+    @Operation(summary = "Get Timesheet by ID", description = "Internal/Admin lookup for a specific timesheet by its unique ID.")
+    @GetMapping("/weeks/id/{id}")
+    public ResponseEntity<WeeklyTimesheetDTO> getWeeklyTimesheetById(@PathVariable Long id) {
+        return ResponseEntity.ok(timesheetService.getWeeklyTimesheetById(id));
+    }
+
     // ── DELETE /timesheet/entries ───────────────────
     // Delete a draft entry — blocked if week is SUBMITTED+
     @Operation(summary = "Delete Timesheet Entry", description = "Deletes a draft timesheet entry matching the provided projectId, using either an exact entryId or a specific date.")

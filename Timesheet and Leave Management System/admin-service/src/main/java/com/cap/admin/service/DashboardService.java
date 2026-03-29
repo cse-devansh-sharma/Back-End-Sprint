@@ -5,9 +5,9 @@ import com.cap.admin.enums.ApprovalStatus;
 import com.cap.admin.repository.ApprovalQueueRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import com.cap.admin.client.LeaveServiceClient;
+import com.cap.admin.client.TimesheetServiceClient;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 
@@ -17,13 +17,8 @@ import java.time.LocalDate;
 public class DashboardService {
 
     private final ApprovalQueueRepository approvalQueueRepository;
-    private final RestTemplate            restTemplate;
-
-    @Value("${admin.timesheet-service-url}")
-    private String timesheetServiceUrl;
-
-    @Value("${admin.leave-service-url}")
-    private String leaveServiceUrl;
+    private final TimesheetServiceClient timesheetServiceClient;
+    private final LeaveServiceClient leaveServiceClient;
 
     /**
      * Compliance summary: shows what % of submitted timesheets were approved
@@ -68,20 +63,16 @@ public class DashboardService {
 
         // try fetching last timesheet info
         try {
-            Object tsData = restTemplate.getForObject(
-                    timesheetServiceUrl + "/timesheet/history?page=0&size=1&userId=" + userId,
-                    Object.class);
-            summary.setLastTimesheetData(tsData);
+            Object tsHistory = timesheetServiceClient.getHistory(userId, 0, 1);
+            summary.setLastTimesheetData(tsHistory);
         } catch (Exception e) {
             log.warn("[ADMIN] Could not fetch timesheet summary for user {}: {}", userId, e.getMessage());
         }
 
         // try fetching leave balances
         try {
-            Object leaveData = restTemplate.getForObject(
-                    leaveServiceUrl + "/leave/balance/" + userId,
-                    Object.class);
-            summary.setLeaveBalanceData(leaveData);
+            Object leaveBalances = leaveServiceClient.getBalances(userId);
+            summary.setLeaveBalanceData(leaveBalances);
         } catch (Exception e) {
             log.warn("[ADMIN] Could not fetch leave balance for user {}: {}", userId, e.getMessage());
         }

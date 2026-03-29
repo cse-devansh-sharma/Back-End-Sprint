@@ -14,7 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+import com.cap.timesheet.client.LeaveServiceClient;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -45,15 +45,11 @@ public class TimesheetService {
     @Value("${timesheet.min-hours-per-week}")
     private int minHoursPerWeek;
 
-    @Value("${timesheet.leave-service-url}")
-    private String leaveServiceUrl;
+    // Feign Client for calling Leave Service
+    private final LeaveServiceClient leaveServiceClient;
 
     // RabbitMQ for event publishing
     private final RabbitTemplate rabbitTemplate;
-
-    // RestTemplate for calling Leave Service
-    // to check holidays
-    private final RestTemplate restTemplate;
 
     // ════════════════════════════════════════════════
     // SAVE ENTRY
@@ -184,6 +180,21 @@ public class TimesheetService {
                                 "No timesheet found for week: "
                                 + weekStart));
 
+        return mapToWeeklyTimesheetDTO(sheet);
+    }
+
+    @Transactional
+    public WeeklyTimesheetDTO getWeeklyTimesheetById(Long id) {
+        WeeklyTimesheet sheet = weeklyTimesheetRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Timesheet not found with id: " + id));
+
+        return mapToWeeklyTimesheetDTO(sheet);
+    }
+
+    private WeeklyTimesheetDTO mapToWeeklyTimesheetDTO(WeeklyTimesheet sheet) {
         List<TimesheetEntryResponseDTO> entries =
                 timesheetEntryRepository
                         .findByWeeklyTimesheetIdOrderByWorkDateAsc(
@@ -535,49 +546,27 @@ public class TimesheetService {
     }
 
     // check if a date is a public holiday
-    // calls Leave Service REST API
+    // calls Leave Service via Feign
     private boolean isHoliday(LocalDate date) {
         try {
-            String url = leaveServiceUrl
-                    + "/leave/holidays?year="
-                    + date.getYear();
-
-            // calls Leave Service and gets list of holidays
-            HolidayDTO[] holidays = restTemplate.getForObject(
-                    url, HolidayDTO[].class);
-
+            List<HolidayDTO> holidays = leaveServiceClient.getHolidays(date.getYear());
             if (holidays == null) return false;
-
-            for (HolidayDTO holiday : holidays) {
-                if (holiday.getHolidayDate().equals(date)) {
-                    return true;
-                }
-            }
+            return holidays.stream()
+                    .anyMatch(h -> h.getHolidayDate().equals(date));
         } catch (Exception e) {
-            // if Leave Service is down, don't block the employee
-            // log the error and allow the entry
-            System.err.println(
-                    "Could not reach Leave Service "
-                    + "for holiday check: " + e.getMessage());
+            log.error("Could not reach Leave Service for holiday check: {}", e.getMessage());
         }
         return false;
     }
 
     // check if employee is on leave
-    // calls Leave Service REST API
+    // calls Leave Service via Feign
     private boolean isOnLeave(Long userId, LocalDate date) {
         try {
-            String url = leaveServiceUrl
-                    + "/leave/users/" + userId + "/on-leave?date=" + date;
-
-            Boolean onLeave = restTemplate.getForObject(
-                    url, Boolean.class);
-
-            return onLeave != null && onLeave;
+            OnLeaveStatusResponseDTO response = leaveServiceClient.isOnLeave(userId, date);
+            return response != null && response.isOnLeave();
         } catch (Exception e) {
-            System.err.println(
-                    "Could not reach Leave Service "
-                    + "for on-leave check: " + e.getMessage());
+            log.error("Could not reach Leave Service for on-leave check: {}", e.getMessage());
         }
         return false;
     }

@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 @RestController
@@ -23,6 +24,7 @@ public class AuthController {
     private final AuthService authService;
 
     // POST /auth/signup
+    @Operation(summary = "User Signup", description = "Register a new user in the system")
     @PostMapping("/signup")
     public ResponseEntity<String> signup(@Valid @RequestBody SignupRequestDTO request) {
         return ResponseEntity.status(201)
@@ -30,6 +32,7 @@ public class AuthController {
     }
 
     // POST /auth/login
+    @Operation(summary = "User Login", description = "Authenticate a user and return a JWT token")
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(
             @Valid @RequestBody LoginRequestDTO request) {
@@ -37,12 +40,14 @@ public class AuthController {
     }
 
     // POST /auth/forgot-password
+    @Operation(summary = "Forgot Password", description = "Initiate password reset process")
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordDTO request) {
         return ResponseEntity.ok(authService.forgotPassword(request));
     }
 
     // POST /auth/reset-password
+    @Operation(summary = "Reset Password", description = "Complete password reset with new password")
     @PostMapping("/reset-password")
     public ResponseEntity<String> resetPassword(
             @Valid @RequestBody ResetPasswordDTO request) {
@@ -54,6 +59,7 @@ public class AuthController {
     // GET /auth/users/{id}
     // employee can only view their own profile
     // admin can view anyone's profile
+    @Operation(summary = "Get User Profile", description = "Retrieve a user profile by ID")
     @GetMapping("/users/{id}")
     public ResponseEntity<UserProfileDTO> getUserById(@PathVariable Long id, Authentication authentication) {
 
@@ -71,6 +77,7 @@ public class AuthController {
 
     // PUT /auth/users/{id}/status
     // ADMIN only
+    @Operation(summary = "Update User Status", description = "Admin updates the status of a user")
     @PutMapping("/users/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> updateUserStatus(@PathVariable Long id,@Valid @RequestBody UpdateStatusDTO request) {
@@ -79,6 +86,7 @@ public class AuthController {
 
     // GET /auth/users
     // ADMIN and HR only — paginated list
+    @Operation(summary = "Get All Users", description = "Retrieve a paginated list of users (Admin and HR only)")
     @GetMapping("/users")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<Page<UserProfileDTO>> getAllUsers(Pageable pageable) {

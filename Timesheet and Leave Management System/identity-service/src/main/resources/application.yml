@@ -32,9 +32,25 @@ eureka:
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,tracing
+
 jwt:
   secret: ${JWT_SECRET:a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd}
   expiry-ms: ${JWT_EXPIRY_MS:3600000}
+
+feign:
+  circuitbreaker:
+    enabled: true
 
 springdoc:
   api-docs:

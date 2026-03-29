@@ -36,7 +36,9 @@ public class SecurityConfig {
                     "/v3/api-docs/**",
                     "/leave/v3/api-docs",
                     "/leave/v3/api-docs/**",
-                    "/actuator/health"
+                    "/actuator/health",
+                    "/leave/actuator/health",
+                    "/leave/internal/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )

@@ -7,6 +7,7 @@ import com.cap.identity.enums.Status;
 import com.cap.identity.exception.*;
 import com.cap.identity.repository.UserRepository;
 import com.cap.identity.util.JwtUtil;
+import com.cap.identity.client.LeaveServiceClient;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
@@ -23,6 +24,7 @@ public class AuthService {
     private final UserRepository  userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil         jwtUtil;
+    private final LeaveServiceClient leaveServiceClient;
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
 
@@ -54,6 +56,14 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+        
+        try {
+            leaveServiceClient.allocateInitialLeaves(user.getId());
+        } catch (Exception e) {
+            // Additional safety net in case Feign fallback isn't fully active
+            System.err.println("Leave allocation failed: " + e.getMessage());
+        }
+        
         return "Registration successful";
     }
 

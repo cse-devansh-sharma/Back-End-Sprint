@@ -156,6 +156,26 @@ public class LeaveController {
         return ResponseEntity.ok(new OnLeaveStatusResponseDTO(isOnLeaveStatus));
     }
 
+    // ── GET /leave/requests/{leaveId} ────────────────────
+    // Fetch individual leave request details - used by Admin Service
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get Leave Request by ID", description = "Internal/Admin lookup for a specific leave request by its unique ID.")
+    @GetMapping("/requests/{leaveId}")
+    public ResponseEntity<LeaveRequestResponseDTO> getLeaveRequestById(@PathVariable Long leaveId, Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        return ResponseEntity.ok(leaveService.getLeaveRequestById(leaveId, userId));
+    }
+
+    // ── POST /leave/internal/users/{userId}/allocate-initial ───────
+    // Internal API called by IdentityService via Feign to allocate default leaves
+    @io.swagger.v3.oas.annotations.Operation(summary = "Allocate initial leaves", description = "Internal API to allocate default leaves to a newly registered user.")
+    @PostMapping("/internal/users/{userId}/allocate-initial")
+    public ResponseEntity<String> allocateInitialLeaves(
+            @io.swagger.v3.oas.annotations.Parameter(description = "User ID") @PathVariable Long userId) {
+
+        leaveService.allocateInitialLeaves(userId);
+        return ResponseEntity.ok("Initial leaves allocated successfully");
+    }
+
     // ── private helper — extract userId from JWT ─────────
     private Long extractUserId(Authentication authentication) {
         // authentication.getName() returns userId

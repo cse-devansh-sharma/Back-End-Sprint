@@ -14,18 +14,21 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
       - "3307:3306"
-      # 3307 = your local machine port (use this in MySQL Workbench)
-      # 3306 = port inside Docker network (services use mysql-db:3306)
     volumes:
       - ./mysql-init:/docker-entrypoint-initdb.d
-        # init.sql runs automatically on FIRST startup only
       - mysql-data:/var/lib/mysql
-        # data persists on your local machine even after docker-compose down
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M
 
   rabbitmq-server:
     image: rabbitmq:3-management
@@ -40,9 +43,35 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
       test: rabbitmq-diagnostics -q ping
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9411/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 512M
 
   # ── DISCOVERY & ROUTING ──────────────────────────────────
   eureka-server:
@@ -52,9 +81,16 @@ services:
       - "8761:8761"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M
 
   api-gateway:
     build: ./api-gateway
@@ -65,9 +101,18 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRY_MS=${JWT_EXPIRY}
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     depends_on:
       eureka-server:
         condition: service_healthy
+      zipkin:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   # ── MICROSERVICES ────────────────────────────────────────
   identity-service:
@@ -82,11 +127,20 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRY_MS=${JWT_EXPIRY}
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     depends_on:
       mysql-db:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      zipkin:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   leave-service:
     build: ./leave-service
@@ -103,6 +157,7 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRY_MS=${JWT_EXPIRY}
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     depends_on:
       mysql-db:
         condition: service_healthy
@@ -110,6 +165,14 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      zipkin:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   timesheet-service:
     build: ./timesheet-service
@@ -127,6 +190,7 @@ services:
       - TIMESHEET_LEAVE_SERVICE_URL=http://leave-service:8083
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRY_MS=${JWT_EXPIRY}
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     depends_on:
       mysql-db:
         condition: service_healthy
@@ -134,6 +198,14 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      zipkin:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   admin-service:
     build: ./admin-service
@@ -152,6 +224,7 @@ services:
       - ADMIN_LEAVE_SERVICE_URL=http://leave-service:8083
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRY_MS=${JWT_EXPIRY}
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     depends_on:
       mysql-db:
         condition: service_healthy
@@ -159,6 +232,14 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      zipkin:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   notification-service:
     build: ./notification-service
@@ -175,10 +256,13 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRY_MS=${JWT_EXPIRY}
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
     depends_on:
       mysql-db:
         condition: service_healthy
       rabbitmq-server:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      zipkin:
         condition: service_healthy

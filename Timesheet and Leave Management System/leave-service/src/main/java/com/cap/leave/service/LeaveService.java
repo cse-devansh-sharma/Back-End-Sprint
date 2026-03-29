@@ -431,6 +431,67 @@ public class LeaveService {
     }
 
     // ════════════════════════════════════════════════
+    // ALLOCATE INITIAL LEAVES
+    // ════════════════════════════════════════════════
+    @Transactional
+    public void allocateInitialLeaves(Long userId) {
+        // Ensure default leave types (CL, SL) exist before attempting to create balances
+        ensureDefaultLeaveTypesExist();
+
+        int currentYear = LocalDate.now().getYear();
+        List<LeaveType> activeTypes = leaveTypeRepository.findByIsActive(true);
+
+        for (LeaveType leaveType : activeTypes) {
+            BigDecimal defaultAllotted = BigDecimal.ZERO;
+            if ("CL".equalsIgnoreCase(leaveType.getCode())) {
+                defaultAllotted = new BigDecimal("12.00");
+            } else if ("SL".equalsIgnoreCase(leaveType.getCode())) {
+                defaultAllotted = new BigDecimal("12.00");
+            }
+            
+            // Avoid creating duplicate records if re-registered or called twice
+            boolean exists = leaveBalanceRepository.findByUserIdAndLeaveTypeIdAndYear(userId, leaveType.getId(), currentYear).isPresent();
+            if (!exists) {
+                LeaveBalance balance = LeaveBalance.builder()
+                        .userId(userId)
+                        .leaveType(leaveType)
+                        .year(currentYear)
+                        .totalAllotted(defaultAllotted)
+                        .used(BigDecimal.ZERO)
+                        .pending(BigDecimal.ZERO)
+                        .carryForwarded(BigDecimal.ZERO)
+                        .build();
+
+                leaveBalanceRepository.save(balance);
+                log.info("[LEAVE] Allocated {} init leaves for code:{} user:{}", defaultAllotted, leaveType.getCode(), userId);
+            }
+        }
+    }
+
+    private void ensureDefaultLeaveTypesExist() {
+        createDefaultTypeIfNotExists("CL", "Casual Leave");
+        createDefaultTypeIfNotExists("SL", "Sick Leave");
+    }
+
+    private void createDefaultTypeIfNotExists(String code, String name) {
+        if (leaveTypeRepository.findByCodeAndIsActive(code, true).isEmpty()) {
+            LeaveType leaveType = LeaveType.builder()
+                    .code(code)
+                    .name(name)
+                    .isPaid(true)
+                    .isActive(true)
+                    .requiresDelegate(false)
+                    .minNoticeDays(0)
+                    .allowHalfDay(true)
+                    .carryForwardAllowed(false)
+                    .maxCarryForwardDays(0)
+                    .build();
+            leaveTypeRepository.save(leaveType);
+            log.info("[LEAVE] Auto-initialized default leave type: {} ({})", code, name);
+        }
+    }
+
+    // ════════════════════════════════════════════════
     // PRIVATE HELPERS
     // ════════════════════════════════════════════════
 

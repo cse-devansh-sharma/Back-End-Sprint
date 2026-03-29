@@ -14,8 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.beans.factory.annotation.Value;
+import com.cap.admin.client.LeaveServiceClient;
+import com.cap.admin.client.TimesheetServiceClient;
 
 import java.time.LocalDateTime;
 
@@ -28,14 +28,9 @@ import com.cap.admin.exception.ResourceNotFoundException;
 public class ApprovalService {
 
     private final ApprovalQueueRepository approvalQueueRepository;
-    private final RestTemplate            restTemplate;
+    private final TimesheetServiceClient  timesheetServiceClient;
+    private final LeaveServiceClient       leaveServiceClient;
     private final RabbitTemplate          rabbitTemplate;
-
-    @Value("${admin.timesheet-service-url}")
-    private String timesheetUrl;
-
-    @Value("${admin.leave-service-url}")
-    private String leaveUrl;
 
     // ════════════════════════════════════════════════
     // GET PENDING APPROVALS FOR MANAGER
@@ -239,20 +234,12 @@ public class ApprovalService {
                                 ReferenceType type) {
         try {
             if (type == ReferenceType.TIMESHEET) {
-                return restTemplate.getForObject(
-                        timesheetUrl
-                        + "/timesheet/weeks/id/"
-                        + referenceId,
-                        TimesheetDetailsDTO.class);
+                return timesheetServiceClient.getTimesheetById(referenceId);
             } else {
-                return restTemplate.getForObject(
-                        leaveUrl
-                        + "/leave/requests/"
-                        + referenceId,
-                        LeaveDetailsDTO.class);
+                return leaveServiceClient.getLeaveRequestById(referenceId);
             }
         } catch (Exception e) {
-            // if service is down return null gracefully
+            log.error("[ADMIN] Could not fetch details for type {} and id {}: {}", type, referenceId, e.getMessage());
             return null;
         }
     }
