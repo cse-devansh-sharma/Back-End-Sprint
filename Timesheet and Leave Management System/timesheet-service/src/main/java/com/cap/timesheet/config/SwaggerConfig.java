@@ -23,7 +23,7 @@ public class SwaggerConfig {
                         .version("1.0")
                         .description("Timesheet Service APIs"))
 
-                // 🔐 JWT Configuration
+               
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
 
                 .components(new Components()

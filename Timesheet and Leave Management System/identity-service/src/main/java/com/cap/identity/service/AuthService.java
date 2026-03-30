@@ -21,14 +21,13 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UserRepository  userRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil         jwtUtil;
+    private final JwtUtil jwtUtil;
     private final LeaveServiceClient leaveServiceClient;
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
 
-   
     public String signup(SignupRequestDTO request) {
 
         if (!request.getPassword().equals(request.getConfirmPassword())) {
@@ -36,11 +35,11 @@ public class AuthService {
         }
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new EmailAlreadyExistsException("Email already registered");
+            throw new UserAlreadyExistsException("Email already registered");
         }
 
         if (userRepository.findByEmployeeCode(request.getEmployeeCode()).isPresent()) {
-            throw new EmailAlreadyExistsException("Employee code already in use");
+            throw new UserAlreadyExistsException("Employee code already in use");
         }
 
         User user = User.builder()
@@ -56,22 +55,21 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
-        
+
         try {
             leaveServiceClient.allocateInitialLeaves(user.getId());
         } catch (Exception e) {
-            // Additional safety net in case Feign fallback isn't fully active
+       
             System.err.println("Leave allocation failed: " + e.getMessage());
         }
-        
+
         return "Registration successful";
     }
 
     public LoginResponseDTO login(LoginRequestDTO request) {
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() ->
-                        new InvalidCredentialsException("Invalid credentials"));
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
 
         if (user.getStatus() == Status.INACTIVE) {
             throw new InvalidCredentialsException("Account is inactive");
@@ -106,11 +104,8 @@ public class AuthService {
                 .build();
     }
 
-
     public String forgotPassword(ForgotPasswordDTO request) {
 
-        
-        
         userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
             System.out.println("Reset token generated for: " + user.getEmail());
         });
@@ -118,22 +113,18 @@ public class AuthService {
         return "If this email exists, a reset link has been sent";
     }
 
-    
     public String resetPassword(ResetPasswordDTO request) {
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new InvalidCredentialsException("Passwords do not match");
         }
 
-        
         return "Password reset successful";
     }
 
- 
     public UserProfileDTO getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + id));
 
         return UserProfileDTO.builder()
                 .id(user.getId())
@@ -145,11 +136,9 @@ public class AuthService {
                 .build();
     }
 
-    
     public String updateUserStatus(Long id, String status) {
         User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + id));
 
         user.setStatus(Status.valueOf(status.toUpperCase()));
         userRepository.save(user);

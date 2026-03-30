@@ -1,0 +1,44 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  liquibase:
+    enabled: false
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: false
+  cloud:
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+  instance:
+    appname: timesheet-service
+
+jwt:
+  secret: a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd
+  expiry-ms: 3600000
+
+timesheet:
+  max-hours-per-day: 10
+  min-hours-per-week: 24
+  leave-service-url: http://localhost:8083
+
+management:
+  tracing:
+    enabled: false
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans

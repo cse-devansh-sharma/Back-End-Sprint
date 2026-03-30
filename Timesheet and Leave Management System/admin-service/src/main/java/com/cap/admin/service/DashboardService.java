@@ -9,8 +9,6 @@ import com.cap.admin.client.LeaveServiceClient;
 import com.cap.admin.client.TimesheetServiceClient;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -22,22 +20,27 @@ public class DashboardService {
 
     /**
      * Compliance summary: shows what % of submitted timesheets were approved
-     * for a manager's team in a date range.
-     * Queries only local approval_queue — no inter-service call needed.
+     * for a manager's team or the entire organization if ADMIN/MANAGER.
      */
-    public DashboardComplianceDTO getComplianceSummary(Long managerId) {
-        long total = approvalQueueRepository.countByAssignedToAndStatus(
-                managerId, ApprovalStatus.PENDING)
-                + approvalQueueRepository.countByAssignedToAndStatus(
-                managerId, ApprovalStatus.APPROVED)
-                + approvalQueueRepository.countByAssignedToAndStatus(
-                managerId, ApprovalStatus.REJECTED);
+    public DashboardComplianceDTO getComplianceSummary(Long managerId, String role) {
 
-        long approved = approvalQueueRepository.countByAssignedToAndStatus(
-                managerId, ApprovalStatus.APPROVED);
+        long total, approved, pending;
 
-        long pending = approvalQueueRepository.countByAssignedToAndStatus(
-                managerId, ApprovalStatus.PENDING);
+        if ("ADMIN".equalsIgnoreCase(role) || "MANAGER".equalsIgnoreCase(role)) {
+            // global stats for privileged users
+            total = approvalQueueRepository.countByStatus(ApprovalStatus.PENDING)
+                    + approvalQueueRepository.countByStatus(ApprovalStatus.APPROVED)
+                    + approvalQueueRepository.countByStatus(ApprovalStatus.REJECTED);
+            approved = approvalQueueRepository.countByStatus(ApprovalStatus.APPROVED);
+            pending = approvalQueueRepository.countByStatus(ApprovalStatus.PENDING);
+        } else {
+            // manager specific stats
+            total = approvalQueueRepository.countByAssignedToAndStatus(managerId, ApprovalStatus.PENDING)
+                    + approvalQueueRepository.countByAssignedToAndStatus(managerId, ApprovalStatus.APPROVED)
+                    + approvalQueueRepository.countByAssignedToAndStatus(managerId, ApprovalStatus.REJECTED);
+            approved = approvalQueueRepository.countByAssignedToAndStatus(managerId, ApprovalStatus.APPROVED);
+            pending = approvalQueueRepository.countByAssignedToAndStatus(managerId, ApprovalStatus.PENDING);
+        }
 
         double compliancePct = total == 0 ? 100.0
                 : Math.round((approved * 100.0 / total) * 10.0) / 10.0;
@@ -54,14 +57,12 @@ public class DashboardService {
     /**
      * Employee summary: fetches last timesheet status from timesheet-service
      * and leave balance from leave-service.
-     * Graceful degradation — returns partial data if a service is unreachable.
      */
     public DashboardEmployeeSummaryDTO getEmployeeSummary(Long userId) {
         DashboardEmployeeSummaryDTO summary = DashboardEmployeeSummaryDTO.builder()
                 .userId(userId)
                 .build();
 
-        // try fetching last timesheet info
         try {
             Object tsHistory = timesheetServiceClient.getHistory(userId, 0, 1);
             summary.setLastTimesheetData(tsHistory);
@@ -69,7 +70,6 @@ public class DashboardService {
             log.warn("[ADMIN] Could not fetch timesheet summary for user {}: {}", userId, e.getMessage());
         }
 
-        // try fetching leave balances
         try {
             Object leaveBalances = leaveServiceClient.getBalances(userId);
             summary.setLeaveBalanceData(leaveBalances);

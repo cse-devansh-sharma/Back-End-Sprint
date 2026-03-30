@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange,
-                             GatewayFilterChain chain) {
+            GatewayFilterChain chain) {
 
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
@@ -70,9 +70,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         // ── STEP 5: Extract user info from token ────────────────────────────
-        String email  = jwtUtil.extractEmail(token);
-        String role   = jwtUtil.extractRole(token);
-        Long   userId = jwtUtil.extractUserId(token);
+        String email = jwtUtil.extractEmail(token);
+        String role = jwtUtil.extractRole(token);
+        Long userId = jwtUtil.extractUserId(token);
 
         log.debug("JWT valid — email: {}, role: {}", email, role);
 
@@ -81,8 +81,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         // instead of re-parsing the JWT themselves — this IS centralized security
         ServerHttpRequest modifiedRequest = request.mutate()
                 .header("X-User-Email", email)
-                .header("X-User-Role",  role)
-                .header("X-User-Id",    userId != null ? userId.toString() : "")
+                .header("X-User-Role", role)
+                .header("X-User-Id", userId != null ? userId.toString() : "")
                 .build();
 
         return chain.filter(exchange.mutate().request(modifiedRequest).build());
@@ -93,23 +93,23 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private boolean isPublicRoute(String path) {
         return path.startsWith("/auth/signup")
-            || path.startsWith("/auth/login")
-            || path.startsWith("/auth/forgot-password")
-            || path.startsWith("/auth/reset-password")
-            || path.startsWith("/actuator")
-            // Swagger paths — needed so the aggregated UI loads without a token
-            || path.contains("/v3/api-docs")
-            || path.contains("/swagger-ui")
-            || path.contains("/swagger-resources")
-            || path.contains("/webjars")
-            || path.contains("/v3/api-docs/**");
+                || path.startsWith("/auth/login")
+                || path.startsWith("/auth/forgot-password")
+                || path.startsWith("/auth/reset-password")
+                || path.startsWith("/actuator")
+                // Swagger paths — needed so the aggregated UI loads without a token
+                || path.contains("/v3/api-docs")
+                || path.contains("/swagger-ui")
+                || path.contains("/swagger-resources")
+                || path.contains("/webjars")
+                || path.contains("/v3/api-docs/**");
     }
 
     // ─── Error Response Helper ─────────────────────────────────────────────
 
     private Mono<Void> onError(ServerHttpResponse response,
-                               String message,
-                               HttpStatus status) {
+            String message,
+            HttpStatus status) {
         response.setStatusCode(status);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 

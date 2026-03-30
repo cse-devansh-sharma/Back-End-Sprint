@@ -27,8 +27,6 @@ public class JwtUtil {
 
     // ─── Extract Claims ────────────────────────────────
 
-    
-
     public String extractRole(String token) {
         return extractAllClaims(token).get("role", String.class);
     }

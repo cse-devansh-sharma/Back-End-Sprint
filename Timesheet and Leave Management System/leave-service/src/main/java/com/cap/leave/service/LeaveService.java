@@ -3,6 +3,7 @@ package com.cap.leave.service;
 import com.cap.leave.dto.*;
 import com.cap.leave.entity.*;
 import com.cap.leave.enums.LeaveStatus;
+import com.cap.leave.messaging.dto.ApproveCommandEvent;
 import com.cap.leave.messaging.dto.LeaveSubmittedEvent;
 import com.cap.leave.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -187,8 +188,21 @@ public class LeaveService {
 
         writeAuditLog(leaveRequest, "APPROVED", approverId, remark);
 
-        // ── TODO: publish leave.approved event to RabbitMQ ───
-        // leaveEventPublisher.publishLeaveApproved(leaveRequest);
+        // publish leave.approved event to RabbitMQ
+        try {
+            rabbitTemplate.convertAndSend(
+                    "leave.events",
+                    "leave.approved",
+                    ApproveCommandEvent.builder()
+                            .referenceId(leaveRequest.getId())
+                            .approverId(approverId)
+                            .remark(remark)
+                            .action("APPROVE")
+                            .build());
+            log.info("[LEAVE] Published leave.approved for requestId={}", leaveRequest.getId());
+        } catch (Exception e) {
+            log.error("[LEAVE] Failed to publish leave.approved: {}", e.getMessage());
+        }
     }
 
     // ════════════════════════════════════════════════
@@ -226,8 +240,21 @@ public class LeaveService {
         // ── write audit log ───────────────────────────────────
         writeAuditLog(leaveRequest, "REJECTED", approverId, remark);
 
-        // ── TODO: publish leave.rejected event to RabbitMQ ───
-        // leaveEventPublisher.publishLeaveRejected(leaveRequest);
+        // publish leave.rejected event to RabbitMQ
+        try {
+            rabbitTemplate.convertAndSend(
+                    "leave.events",
+                    "leave.rejected",
+                    ApproveCommandEvent.builder()
+                            .referenceId(leaveRequest.getId())
+                            .approverId(approverId)
+                            .remark(remark)
+                            .action("REJECT")
+                            .build());
+            log.info("[LEAVE] Published leave.rejected for requestId={}", leaveRequest.getId());
+        } catch (Exception e) {
+            log.error("[LEAVE] Failed to publish leave.rejected: {}", e.getMessage());
+        }
     }
 
     // ════════════════════════════════════════════════
@@ -466,6 +493,43 @@ public class LeaveService {
                 log.info("[LEAVE] Allocated {} init leaves for code:{} user:{}", defaultAllotted, leaveType.getCode(), userId);
             }
         }
+    }
+
+    // ════════════════════════════════════════════════
+    // MANUAL ALLOCATE LEAVES (Internal / Authority)
+    // ════════════════════════════════════════════════
+    @Transactional
+    public void manualAllocateLeaves(LeaveAllocationRequestDTO request) {
+        LeaveType leaveType = leaveTypeRepository.findByCodeAndIsActive(request.getLeaveTypeCode(), true)
+                .orElseThrow(() -> new ResourceNotFoundException("Active leave type not found with code: " + request.getLeaveTypeCode()));
+
+        int year = request.getYear() != null ? request.getYear() : LocalDate.now().getYear();
+        
+        LeaveBalance balance = leaveBalanceRepository.findByUserIdAndLeaveTypeIdAndYear(
+                request.getUserId(), leaveType.getId(), year)
+                .orElseGet(() -> {
+                    log.info("[LEAVE] Creating new balance for user:{} type:{} year:{}", request.getUserId(), request.getLeaveTypeCode(), year);
+                    return LeaveBalance.builder()
+                            .userId(request.getUserId())
+                            .leaveType(leaveType)
+                            .year(year)
+                            .totalAllotted(BigDecimal.ZERO)
+                            .used(BigDecimal.ZERO)
+                            .pending(BigDecimal.ZERO)
+                            .carryForwarded(BigDecimal.ZERO)
+                            .build();
+                });
+
+        BigDecimal previousAllotted = balance.getTotalAllotted();
+        balance.setTotalAllotted(previousAllotted.add(request.getAmount()));
+        leaveBalanceRepository.save(balance);
+
+        log.info("[LEAVE] Manually increased leave balance for user:{} type:{} from {} to {}", 
+                request.getUserId(), request.getLeaveTypeCode(), previousAllotted, balance.getTotalAllotted());
+        
+        // Manual audit log entry (id is null since it's not a request action)
+        writeAuditLog(null, "MANUAL_ALLOCATION", request.getUserId(), 
+                "Added " + request.getAmount() + " days to " + request.getLeaveTypeCode());
     }
 
     private void ensureDefaultLeaveTypesExist() {

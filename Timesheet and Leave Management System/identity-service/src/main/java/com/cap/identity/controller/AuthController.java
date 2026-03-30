@@ -23,60 +23,52 @@ public class AuthController {
 
     private final AuthService authService;
 
-    // POST /auth/signup
+ 
     @Operation(summary = "User Signup", description = "Register a new user in the system")
     @PostMapping("/signup")
     public ResponseEntity<String> signup(@Valid @RequestBody SignupRequestDTO request) {
-        return ResponseEntity.status(201)
-                .body(authService.signup(request));
+        return ResponseEntity.status(201).body(authService.signup(request));
     }
 
-    // POST /auth/login
+ 
     @Operation(summary = "User Login", description = "Authenticate a user and return a JWT token")
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> login(
-            @Valid @RequestBody LoginRequestDTO request) {
+    public ResponseEntity<LoginResponseDTO> login( @Valid @RequestBody LoginRequestDTO request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    // POST /auth/forgot-password
     @Operation(summary = "Forgot Password", description = "Initiate password reset process")
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordDTO request) {
         return ResponseEntity.ok(authService.forgotPassword(request));
     }
 
-    // POST /auth/reset-password
+
     @Operation(summary = "Reset Password", description = "Complete password reset with new password")
     @PostMapping("/reset-password")
-    public ResponseEntity<String> resetPassword(
-            @Valid @RequestBody ResetPasswordDTO request) {
+    public ResponseEntity<String> resetPassword( @Valid @RequestBody ResetPasswordDTO request) {
         return ResponseEntity.ok(authService.resetPassword(request));
     }
 
-    // ── PROTECTED ROUTES (JWT required) ──────────────────
 
-    // GET /auth/users/{id}
-    // employee can only view their own profile
-    // admin can view anyone's profile
+
+
     @Operation(summary = "Get User Profile", description = "Retrieve a user profile by ID")
     @GetMapping("/users/{id}")
     public ResponseEntity<UserProfileDTO> getUserById(@PathVariable Long id, Authentication authentication) {
 
         String currentUserId = authentication.getName();
-        String currentRole   = authentication.getAuthorities()
-                .iterator().next().getAuthority();
+        String currentRole   = authentication.getAuthorities().iterator().next().getAuthority();
 
-        // if not admin, can only view own profile
-        if (!currentRole.equals("ROLE_ADMIN") &&!currentUserId.equals(String.valueOf(id))) {
+      
+        if (!currentRole.equals("ROLE_ADMIN") && !currentUserId.equals(String.valueOf(id))) {
             throw new InvalidCredentialsException("You can only view your own profile");
         }
 
         return ResponseEntity.ok(authService.getUserById(id));
     }
 
-    // PUT /auth/users/{id}/status
-    // ADMIN only
+
     @Operation(summary = "Update User Status", description = "Admin updates the status of a user")
     @PutMapping("/users/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
@@ -84,8 +76,6 @@ public class AuthController {
         return ResponseEntity.ok(authService.updateUserStatus(id, request.getStatus()));
     }
 
-    // GET /auth/users
-    // ADMIN and HR only — paginated list
     @Operation(summary = "Get All Users", description = "Retrieve a paginated list of users (Admin and HR only)")
     @GetMapping("/users")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")

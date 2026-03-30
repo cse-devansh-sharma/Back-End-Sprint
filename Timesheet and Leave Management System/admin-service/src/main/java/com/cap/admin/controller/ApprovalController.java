@@ -5,7 +5,7 @@ import com.cap.admin.enums.ReferenceType;
 import com.cap.admin.service.ApprovalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import jakarta.validation.Valid;
+import com.cap.admin.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,10 +27,16 @@ public class ApprovalController {
     @Operation(summary = "Get Pending Approvals", description = "Fetches a paginated list of all timesheet and leave requests awaiting approval from the currently logged-in manager.")
     @GetMapping("/approvals")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<Page<ApprovalQueueResponseDTO>> getPendingApprovals( Authentication authentication, Pageable pageable) {
+    public ResponseEntity<Page<ApprovalQueueResponseDTO>> getPendingApprovals(Authentication authentication, Pageable pageable) {
 
         Long managerId = extractUserId(authentication);
-        return ResponseEntity.ok(approvalService.getPendingApprovals(managerId, pageable));
+        String role = authentication.getAuthorities().iterator().next().getAuthority();
+        // role is like "ROLE_ADMIN", we need "ADMIN"
+        if (role.startsWith("ROLE_")) {
+            role = role.substring(5);
+        }
+
+        return ResponseEntity.ok(approvalService.getPendingApprovals(managerId, role, pageable));
     }
 
     // ── POST /admin/approvals/{id}/approve ───────────────

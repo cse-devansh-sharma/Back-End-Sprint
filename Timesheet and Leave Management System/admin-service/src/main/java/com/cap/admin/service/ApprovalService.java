@@ -36,13 +36,22 @@ public class ApprovalService {
     // GET PENDING APPROVALS FOR MANAGER
     // ════════════════════════════════════════════════
     @Transactional
-    public Page<ApprovalQueueResponseDTO> getPendingApprovals(Long managerId, Pageable pageable) {
+    public Page<ApprovalQueueResponseDTO> getPendingApprovals(Long managerId, String role, Pageable pageable) {
 
-        return approvalQueueRepository
-                .findByAssignedToAndStatus(managerId, ApprovalStatus.PENDING,pageable)
-                .map(item -> {
-                    ApprovalQueueResponseDTO dto =
-                        ApprovalQueueResponseDTO.builder()
+        log.info("[ADMIN] Fetching approvals for managerId={} role={}", managerId, role);
+
+        Page<ApprovalQueue> items;
+        if ("ADMIN".equalsIgnoreCase(role) || "MANAGER".equalsIgnoreCase(role)) {
+            // fetch all pending items globally as requested
+            items = approvalQueueRepository.findByStatus(ApprovalStatus.PENDING, pageable);
+        } else {
+            // fetch only assigned items
+            items = approvalQueueRepository.findByAssignedToAndStatus(managerId, ApprovalStatus.PENDING, pageable);
+        }
+
+        return items.map(item -> {
+            ApprovalQueueResponseDTO dto =
+                    ApprovalQueueResponseDTO.builder()
                             .id(item.getId())
                             .referenceId(item.getReferenceId())
                             .referenceType(item.getReferenceType())
@@ -52,10 +61,10 @@ public class ApprovalService {
                             .createdAt(item.getCreatedAt())
                             .build();
 
-                    // enrich with details from other service
-                    dto.setDetails(fetchDetails(item.getReferenceId(),item.getReferenceType()));
-                    return dto;
-                });
+            // enrich with details from other service
+            dto.setDetails(fetchDetails(item.getReferenceId(), item.getReferenceType()));
+            return dto;
+        });
     }
 
     // ════════════════════════════════════════════════

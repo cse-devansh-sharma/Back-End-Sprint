@@ -34,6 +34,10 @@ public class DashboardController {
     public ResponseEntity<DashboardComplianceDTO> getComplianceSummary(
             Authentication authentication) {
         Long managerId = Long.parseLong(authentication.getName());
-        return ResponseEntity.ok(dashboardService.getComplianceSummary(managerId));
+        String role = authentication.getAuthorities().iterator().next().getAuthority();
+        if (role.startsWith("ROLE_")) {
+            role = role.substring(5);
+        }
+        return ResponseEntity.ok(dashboardService.getComplianceSummary(managerId, role));
     }
 }

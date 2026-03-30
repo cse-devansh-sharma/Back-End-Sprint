@@ -19,6 +19,11 @@ public interface ApprovalQueueRepository
             ApprovalStatus status,
             Pageable pageable);
 
+    // get all approvals by status (global view)
+    Page<ApprovalQueue> findByStatus(
+            ApprovalStatus status,
+            Pageable pageable);
+
     // find specific item by reference
     Optional<ApprovalQueue> findByReferenceIdAndReferenceType(
             Long referenceId,
@@ -37,4 +42,7 @@ public interface ApprovalQueueRepository
     long countByAssignedToAndStatus(
             Long assignedTo,
             ApprovalStatus status);
+
+    // count all by status (global summary)
+    long countByStatus(ApprovalStatus status);
 }

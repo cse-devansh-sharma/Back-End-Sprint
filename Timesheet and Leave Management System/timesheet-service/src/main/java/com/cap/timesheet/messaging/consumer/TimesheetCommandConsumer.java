@@ -8,11 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
-/**
- * Listens on admin.commands exchange for approve/reject commands targeting timesheets.
- * Delegates to TimesheetService to update the timesheet status.
- * This service remains completely independent — it only reacts to RabbitMQ messages.
- */
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -31,7 +27,7 @@ public class TimesheetCommandConsumer {
             log.info("[TIMESHEET] Timesheet {} approved by manager {}", event.getReferenceId(), event.getApproverId());
         } catch (Exception e) {
             log.error("[TIMESHEET] Failed to approve timesheet {}: {}", event.getReferenceId(), e.getMessage());
-            throw e; // re-throw to trigger retry / DLQ
+            throw e;
         }
     }
 

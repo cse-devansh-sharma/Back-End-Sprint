@@ -144,12 +144,24 @@ public class LeaveController {
     }
 
     // ── GET /leave/users/{userId}/on-leave ───────────────
-    // API used by TimesheetService (and Managers/Admins/Employees) to check if user is on leave
-    @io.swagger.v3.oas.annotations.Operation(summary = "Check if user is on leave", description = "Returns a full JSON format response containing onLeave status.")
+    // API restricted to Authorities only
+    @io.swagger.v3.oas.annotations.Operation(summary = "Check if user is on leave (Authorities only)", description = "Returns onLeave status. Restricted to MANAGERS, HR, and ADMIN.")
     @GetMapping("/users/{userId}/on-leave")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN', 'HR')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<OnLeaveStatusResponseDTO> isOnLeave(
             @io.swagger.v3.oas.annotations.Parameter(description = "User ID") @PathVariable Long userId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        boolean isOnLeaveStatus = leaveService.isOnLeave(userId, date);
+        return ResponseEntity.ok(new OnLeaveStatusResponseDTO(isOnLeaveStatus));
+    }
+
+    // ── GET /leave/internal/users/{userId}/on-leave ──────
+    // Internal API used by TimesheetService (PermitAll in SecurityConfig)
+    @io.swagger.v3.oas.annotations.Operation(summary = "Internal: Check if user is on leave", description = "Internal fallback for service-to-service validation.")
+    @GetMapping("/internal/users/{userId}/on-leave")
+    public ResponseEntity<OnLeaveStatusResponseDTO> isOnLeaveInternal(
+            @PathVariable Long userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 
         boolean isOnLeaveStatus = leaveService.isOnLeave(userId, date);
@@ -174,6 +186,18 @@ public class LeaveController {
 
         leaveService.allocateInitialLeaves(userId);
         return ResponseEntity.ok("Initial leaves allocated successfully");
+    }
+
+    // ── POST /leave/allocate ─────────────────────────────
+    // Manual allocation by Authorities
+    @io.swagger.v3.oas.annotations.Operation(summary = "Manually allocate leaves", description = "Authorized roles can increase leave balances manually.")
+    @PostMapping("/allocate")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
+    public ResponseEntity<String> manualAllocate(
+            @Valid @RequestBody LeaveAllocationRequestDTO request) {
+
+        leaveService.manualAllocateLeaves(request);
+        return ResponseEntity.ok("Leaves allocated successfully");
     }
 
     // ── private helper — extract userId from JWT ─────────

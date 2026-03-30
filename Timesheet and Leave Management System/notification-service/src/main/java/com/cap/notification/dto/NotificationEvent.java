@@ -5,7 +5,7 @@ import lombok.*;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class NotificationEvent {
     private Long   userId;
-    private String type;   // matches NotificationType enum name
+    private String type;
     private String title;
     private String body;
 }

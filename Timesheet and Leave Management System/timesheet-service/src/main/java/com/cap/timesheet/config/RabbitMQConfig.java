@@ -25,6 +25,7 @@ public class RabbitMQConfig {
     // Routing keys for publishing
     public static final String RK_SUBMITTED = "timesheet.submitted";
     public static final String RK_APPROVED  = "timesheet.approved";
+    public static final String RK_REJECTED  = "timesheet.rejected";
 
     @Bean
     public Jackson2JsonMessageConverter messageConverter() {

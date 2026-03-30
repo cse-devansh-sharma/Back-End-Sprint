@@ -16,7 +16,7 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
-                // Permit everything — JwtAuthenticationFilter (GlobalFilter) handles
+                // Permit everything  JwtAuthenticationFilter (GlobalFilter) handles
                 // all authentication and authorization logic instead
                 .authorizeExchange(exchange -> exchange
                         .anyExchange().permitAll()

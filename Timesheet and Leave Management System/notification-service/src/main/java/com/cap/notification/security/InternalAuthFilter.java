@@ -22,23 +22,14 @@ import java.util.List;
 public class InternalAuthFilter extends OncePerRequestFilter {
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,FilterChain filterChain) throws ServletException, IOException {
 
         String userId = request.getHeader("X-User-Id");
         String role   = request.getHeader("X-User-Role");
 
-        if (userId != null && role != null
-                && !userId.isBlank() && !role.isBlank()) {
+        if (userId != null && role != null && !userId.isBlank() && !role.isBlank()) {
 
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(
-                            userId,
-                            null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                    );
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken( userId,null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
 
             SecurityContextHolder.getContext().setAuthentication(auth);
         }

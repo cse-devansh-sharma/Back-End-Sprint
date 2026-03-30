@@ -1,5 +1,6 @@
 package com.cap.timesheet.service;
 
+import com.cap.timesheet.config.RabbitMQConfig;
 import com.cap.timesheet.dto.*;
 import com.cap.timesheet.entity.*;
 import com.cap.timesheet.enums.TimesheetStatus;
@@ -62,8 +63,7 @@ public class TimesheetService {
         // ── Step 1: validate work date is not weekend ─────
         LocalDate workDate = request.getWorkDate();
         if (workDate.isAfter(LocalDate.now())) {
-            throw new BusinessRuleException(
-                    "Cannot log hours for future dates");
+            throw new BusinessRuleException("Cannot log hours for future dates");
         }
 
         if (workDate.getDayOfWeek() == DayOfWeek.SATURDAY
@@ -201,7 +201,7 @@ public class TimesheetService {
                                 sheet.getId())
                         .stream()
                         .map(this::mapToEntryResponseDTO)
-                        .collect(Collectors.toList());
+                        .toList();
 
         return WeeklyTimesheetDTO.builder()
                 .id(sheet.getId())
@@ -276,9 +276,7 @@ public class TimesheetService {
         WeeklyTimesheet sheet = weeklyTimesheetRepository
                 .findByUserIdAndWeekStart(userId, weekStart)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No timesheet found for week: "
-                                + weekStart));
+                        new ResourceNotFoundException( "No timesheet found for week: " + weekStart));
 
         // get all entries for this week
         List<TimesheetEntry> entries = timesheetEntryRepository
@@ -288,7 +286,7 @@ public class TimesheetService {
         // get dates that have entries
         List<LocalDate> datesWithEntries = entries.stream()
                 .map(TimesheetEntry::getWorkDate)
-                .collect(Collectors.toList());
+                .toList();
 
         // check Mon to Fri — each must have at least one entry
         LocalDate day = weekStart;
@@ -367,8 +365,8 @@ public class TimesheetService {
         // publish timesheet.submitted event to RabbitMQ
         try {
             rabbitTemplate.convertAndSend(
-                    "timesheet.events",
-                    "timesheet.submitted",
+                    RabbitMQConfig.TIMESHEET_EVENTS_EXCHANGE,
+                    RabbitMQConfig.RK_SUBMITTED,
                     TimesheetSubmittedEvent.builder()
                             .timesheetId(sheet.getId())
                             .userId(userId)
@@ -385,21 +383,13 @@ public class TimesheetService {
         return "Timesheet submitted successfully";
     }
 
-    // ════════════════════════════════════════════════
-    // APPROVE TIMESHEET
-    // called by RabbitMQ consumer later
-    // ════════════════════════════════════════════════
+   
     @Transactional
-    public void approveTimesheet(
-            Long timesheetId,
-            Long approverId,
-            String remark) {
+    public void approveTimesheet( Long timesheetId,Long approverId,String remark) {
 
         WeeklyTimesheet sheet = weeklyTimesheetRepository
                 .findById(timesheetId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Timesheet not found"));
+                .orElseThrow(() ->new ResourceNotFoundException("Timesheet not found"));
 
         // idempotency check
         if (sheet.getStatus() == TimesheetStatus.APPROVED) {
@@ -422,8 +412,8 @@ public class TimesheetService {
         // publish timesheet.approved event
         try {
             rabbitTemplate.convertAndSend(
-                    "timesheet.events",
-                    "timesheet.approved",
+                    RabbitMQConfig.TIMESHEET_EVENTS_EXCHANGE,
+                    RabbitMQConfig.RK_APPROVED,
                     ApproveCommandEvent.builder()
                             .referenceId(sheet.getId())
                             .approverId(approverId)
@@ -441,10 +431,7 @@ public class TimesheetService {
     // called by RabbitMQ consumer later
     // ════════════════════════════════════════════════
     @Transactional
-    public void rejectTimesheet(
-            Long timesheetId,
-            Long approverId,
-            String remark) {
+    public void rejectTimesheet(Long timesheetId, Long approverId, String remark) {
 
         WeeklyTimesheet sheet = weeklyTimesheetRepository
                 .findById(timesheetId)
@@ -465,31 +452,43 @@ public class TimesheetService {
 
         writeAuditLog(sheet, "REJECTED", approverId, remark);
 
-        // TODO: publish timesheet.rejected event to RabbitMQ
+        // publish timesheet.rejected event
+        try {
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.TIMESHEET_EVENTS_EXCHANGE,
+                    RabbitMQConfig.RK_REJECTED,
+                    ApproveCommandEvent.builder()
+                            .referenceId(sheet.getId())
+                            .approverId(approverId)
+                            .remark(remark)
+                            .action("REJECT")
+                            .build());
+            log.info("[TIMESHEET] Published timesheet.rejected for id={}", sheet.getId());
+        } catch (Exception e) {
+            log.error("[TIMESHEET] Failed to publish rejection event: {}", e.getMessage());
+        }
     }
 
     // ════════════════════════════════════════════════
     // GET TIMESHEET HISTORY
     // ════════════════════════════════════════════════
     @Transactional
-    public Page<WeeklyTimesheetDTO> getHistory(
-            Long userId, Pageable pageable, Long projectId) {
+    public Page<WeeklyTimesheetDTO> getHistory(Long userId, Pageable pageable, Long projectId) {
 
         return weeklyTimesheetRepository
                 .findByUserIdOrderByWeekStartDesc(userId, pageable)
-                .map(sheet -> {
-                    List<TimesheetEntry> rawEntries = timesheetEntryRepository
-                            .findByWeeklyTimesheetIdOrderByWorkDateAsc(sheet.getId());
+                .map(sheet -> { List<TimesheetEntry> rawEntries = timesheetEntryRepository
+                .findByWeeklyTimesheetIdOrderByWorkDateAsc(sheet.getId());
                     
                     if (projectId != null) {
                         rawEntries = rawEntries.stream()
-                                .filter(e -> e.getProject().getId().equals(projectId))
-                                .collect(Collectors.toList());
+                                    .filter(e -> e.getProject().getId().equals(projectId))
+                                .toList();
                     }
 
                     List<TimesheetEntryResponseDTO> entries = rawEntries.stream()
                                     .map(this::mapToEntryResponseDTO)
-                                    .collect(Collectors.toList());
+                                    .toList();
 
                     return WeeklyTimesheetDTO.builder()
                             .id(sheet.getId())
@@ -504,9 +503,7 @@ public class TimesheetService {
                 });
     }
 
-    // ════════════════════════════════════════════════
-    // GET ACTIVE PROJECTS
-    // ════════════════════════════════════════════════
+    
     public List<ProjectDTO> getActiveProjects() {
         return projectRepository.findByIsActive(true)
                 .stream()
@@ -518,7 +515,7 @@ public class TimesheetService {
                         .isBillable(p.getIsBillable())
                         .isActive(p.getIsActive())
                         .build())
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ════════════════════════════════════════════════

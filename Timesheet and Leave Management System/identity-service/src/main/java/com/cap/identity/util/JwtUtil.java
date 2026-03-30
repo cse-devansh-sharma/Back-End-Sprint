@@ -25,7 +25,6 @@ public class JwtUtil {
     public String generateToken(User user) {
         return Jwts.builder()
                 .setSubject(String.valueOf(user.getId()))
-                .setSubject(String.valueOf(user.getId()))  // userId as subject
                 .claim("email", user.getEmail())
                 .claim("role", user.getRole().name())
                 .setIssuedAt(new Date())
@@ -46,7 +45,6 @@ public class JwtUtil {
         return getClaims(token).get("email", String.class);
     }
 
-
     public boolean isTokenExpired(String token) {
         return getClaims(token).getExpiration().before(new Date());
     }
@@ -59,7 +57,6 @@ public class JwtUtil {
             return false;
         }
     }
-
 
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()

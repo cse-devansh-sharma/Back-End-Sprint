@@ -16,7 +16,7 @@ import com.cap.identity.enums.Status;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User extends BaseEntity { 
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
