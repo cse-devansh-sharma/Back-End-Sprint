@@ -1,3 +1,6 @@
 /.metadata/
 *.log
 .env
+.sonarlint/
+*.log
+.metadata/
