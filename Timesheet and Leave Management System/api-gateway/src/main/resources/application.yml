@@ -4,59 +4,46 @@ server:
 spring:
   application:
     name: api-gateway
+  security:
+    user:
+      password: disabled
+      name: disabled
 
   cloud:
     gateway:
-      routes:
+      server:
+        webflux:
+          routes:
 
-        # ── Identity Service (registered as IDENTITY-SERVICE in Eureka, port 8081) ──
-        - id: identity-service
-          uri: lb://IDENTITY-SERVICE        # ✅ matches Eureka name exactly
-          predicates:
-            - Path=/auth/**
+            - id: identity-service
+              uri: lb://IDENTITY-SERVICE
+              predicates:
+                - Path=/auth/**
 
-        # ── Timesheet Service (registered as TIMESHEET-SERVICE, port 8084) ──
-        - id: timesheet-service
-          uri: lb://TIMESHEET-SERVICE       # ✅ matches Eureka name exactly
-          predicates:
-            - Path=/timesheet/**
+            - id: timesheet-service
+              uri: lb://TIMESHEET-SERVICE
+              predicates:
+                - Path=/timesheet/**
 
+            - id: leave-service
+              uri: lb://LEAVE-SERVICE
+              predicates:
+                - Path=/leave/**
 
-        # ── Leave Service (registered as LEAVE-SERVICE, port 8083) ──
-        - id: leave-service
-          uri: lb://LEAVE-SERVICE           # ✅ matches Eureka name exactly
-          predicates:
-            - Path=/leave/**
+            - id: admin-service
+              uri: lb://ADMIN-SERVICE
+              predicates:
+                - Path=/admin/**
 
-        # ── Admin Service (registered as ADMIN-SERVICE, port 8085) ──
-        - id: admin-service
-          uri: lb://ADMIN-SERVICE           # ✅ matches Eureka name exactly
-          predicates:
-            - Path=/admin/**
+            - id: notification-service
+              uri: lb://NOTIFICATION-SERVICE
+              predicates:
+                - Path=/notifications/**
 
-        # ── Notification Service (registered as NOTIFICATION-SERVICE, port 8086) ──
-        - id: notification-service
-          uri: lb://NOTIFICATION-SERVICE    # ✅ matches Eureka name exactly
-          predicates:
-            - Path=/notifications/**, /notification/**
-
-
-      # Strip spoofed identity headers from incoming client requests
-      default-filters:
-        - RemoveRequestHeader=X-User-Id
-        - RemoveRequestHeader=X-User-Role
-        - RemoveRequestHeader=X-User-Email
-
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowedOrigins:
-              - "http://localhost:3000"
-              - "http://localhost:8080"
-            allowedMethods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
-            allowedHeaders: [Authorization, Content-Type, Accept, X-Requested-With, Origin]
-            allowCredentials: true
-            maxAge: 3600
+          default-filters:
+            - RemoveRequestHeader=X-User-Id
+            - RemoveRequestHeader=X-User-Role
+            - RemoveRequestHeader=X-User-Email
 
 # ─── JWT ──────────────────────────────────────────────────────────────────────
 jwt:
@@ -94,10 +81,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, tracing
+        include: health, info, gateway
   endpoint:
     health:
       show-details: always
+    gateway:
+      enabled: true
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
 logging:

@@ -29,8 +29,8 @@ public class SecurityConfig {
          // Leave Service SecurityConfig.java
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/leave/holidays",      // ← already here
-                    "/leave/holidays/**",   // ← add this
+                    "/leave/holidays",
+                    "/leave/holidays/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**",

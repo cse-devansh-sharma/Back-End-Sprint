@@ -5,7 +5,6 @@ import com.cap.admin.enums.ReferenceType;
 import com.cap.admin.service.ApprovalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import com.cap.admin.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/admin")
@@ -22,58 +23,32 @@ public class ApprovalController {
 
     private final ApprovalService approvalService;
 
-    // ── GET /admin/approvals ─────────────────────────────
-    // Manager views their pending approval queue
-    @Operation(summary = "Get Pending Approvals", description = "Fetches a paginated list of all timesheet and leave requests awaiting approval from the currently logged-in manager.")
+    @Operation(summary = "Get Pending Approvals")
     @GetMapping("/approvals")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<Page<ApprovalQueueResponseDTO>> getPendingApprovals(Authentication authentication, Pageable pageable) {
-
         Long managerId = extractUserId(authentication);
         String role = authentication.getAuthorities().iterator().next().getAuthority();
-        // role is like "ROLE_ADMIN", we need "ADMIN"
-        if (role.startsWith("ROLE_")) {
-            role = role.substring(5);
-        }
-
+        if (role.startsWith("ROLE_")) role = role.substring(5);
         return ResponseEntity.ok(approvalService.getPendingApprovals(managerId, role, pageable));
     }
 
-    // ── POST /admin/approvals/{id}/approve ───────────────
-    // Manager approves a timesheet or leave request
-    @Operation(summary = "Approve Request", description = "Approves a specific pending request in the queue. You can optionally provide a remark.")
+    @Operation(summary = "Approve Request")
     @PostMapping("/approvals/{id}/approve")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<String> approve(
-            @PathVariable Long id,
-            @RequestBody(required = false)
-            ApprovalActionDTO request) {
-
-        String remark = request != null
-                ? request.getRemark() : null;
-        return ResponseEntity.ok(
-                approvalService.approveItem(id, remark));
+    public ResponseEntity<String> approve(@PathVariable Long id, @RequestBody(required = false) ApprovalActionDTO request) {
+        String remark = request != null ? request.getRemark() : null;
+        return ResponseEntity.ok(approvalService.approveItem(id, remark));
     }
 
-    // ── POST /admin/approvals/{id}/reject ────────────────
-    // Manager rejects — remark is mandatory
-    @Operation(summary = "Reject Request", description = "Rejects a specific pending request. A rejection remark is strictly mandatory.")
+    @Operation(summary = "Reject Request")
     @PostMapping("/approvals/{id}/reject")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<String> reject(
-            @PathVariable Long id,
-            @RequestBody ApprovalActionDTO request) {
-
-        return ResponseEntity.ok(
-                approvalService.rejectItem(
-                        id, request.getRemark()));
+    public ResponseEntity<String> reject(@PathVariable Long id, @RequestBody ApprovalActionDTO request) {
+        return ResponseEntity.ok(approvalService.rejectItem(id, request.getRemark()));
     }
 
-    // ── POST /admin/approvals/queue ──────────────────────
-    // Add item to approval queue
-    // called when timesheet or leave submitted
-    // will be replaced by RabbitMQ consumer in Sprint 3
-    @Operation(summary = "Add to Approval Queue", description = "Manually enqueues a submitted timesheet or leave request for managerial review.")
+    @Operation(summary = "Add to Approval Queue")
     @PostMapping("/approvals/queue")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
     public ResponseEntity<String> addToQueue(
@@ -81,24 +56,25 @@ public class ApprovalController {
             @RequestParam ReferenceType referenceType,
             @RequestParam Long requestedBy,
             @RequestParam Long assignedTo) {
-
-        approvalService.addToQueue(
-                referenceId, referenceType,
-                requestedBy, assignedTo);
-        return ResponseEntity.ok(
-                "Added to approval queue");
+        approvalService.addToQueue(referenceId, referenceType, requestedBy, assignedTo);
+        return ResponseEntity.ok("Added to approval queue");
     }
 
-    // ── GET /admin/config/public ─────────────────────────
-    // Public announcements — no JWT needed
-    @Operation(summary = "Public Config Status", description = "Unauthenticated health check mapping for public announcements.")
+    @Operation(summary = "Public Config Status")
     @GetMapping("/config/public")
     public ResponseEntity<String> getPublicConfig() {
-        return ResponseEntity.ok(
-                "System is operational");
+        return ResponseEntity.ok("System is operational");
     }
 
-    // ── private helper ───────────────────────────────────
+    // Returns distinct employee IDs who have submitted to this manager
+    @Operation(summary = "Get Team Member IDs")
+    @GetMapping("/team/members")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<List<Long>> getTeamMembers(Authentication authentication) {
+        Long managerId = extractUserId(authentication);
+        return ResponseEntity.ok(approvalService.getTeamMemberIds(managerId));
+    }
+
     private Long extractUserId(Authentication auth) {
         return Long.parseLong(auth.getName());
     }

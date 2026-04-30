@@ -2,12 +2,15 @@ package com.cap.identity;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(classes = IdentityServiceApplication.class)
+@SpringBootTest
+@ActiveProfiles("test")
 class IdentityServiceApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
+    @Test
+    void contextLoads() {
+        // Test context loading
+    }
 
 }

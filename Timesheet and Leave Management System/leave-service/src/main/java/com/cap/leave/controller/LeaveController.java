@@ -177,6 +177,17 @@ public class LeaveController {
         return ResponseEntity.ok(leaveService.getLeaveRequestById(leaveId, userId));
     }
 
+    // ── GET /leave/types ──────────────────────────────────
+    // Returns active leave types with id, code, name for the form dropdown
+    @io.swagger.v3.oas.annotations.Operation(summary = "Get active leave types")
+    @GetMapping("/types")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN', 'HR')")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getLeaveTypes() {
+        return ResponseEntity.ok(
+            leaveService.getActiveLeaveTypes()
+        );
+    }
+
     // ── POST /leave/internal/users/{userId}/allocate-initial ───────
     // Internal API called by IdentityService via Feign to allocate default leaves
     @io.swagger.v3.oas.annotations.Operation(summary = "Allocate initial leaves", description = "Internal API to allocate default leaves to a newly registered user.")

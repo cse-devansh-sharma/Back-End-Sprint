@@ -45,7 +45,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         // ── STEP 2: Check Authorization header exists ───────────────────────
-        if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
+        if (!request.getHeaders().containsHeader(HttpHeaders.AUTHORIZATION)) {
             return onError(exchange.getResponse(),
                     "Authorization header is missing",
                     HttpStatus.UNAUTHORIZED);

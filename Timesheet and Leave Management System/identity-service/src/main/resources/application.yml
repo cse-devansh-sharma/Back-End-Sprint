@@ -43,10 +43,13 @@ management:
     web:
       exposure:
         include: health,info,tracing
+      cors:
+        allowed-origins:
+        - http://localhost:5173
 
 jwt:
-  secret: ${JWT_SECRET:a1b1c1d1e1f1gh57e9dbxhsa79snbdebfhe903bjidbc0884bd}
-  expiry-ms: ${JWT_EXPIRY_MS:3600000}
+  secret: JWT_SECRET
+  expiry-ms: JWT_EXPIRY_MS
 
 feign:
   circuitbreaker:
@@ -59,3 +62,4 @@ springdoc:
     path: /swagger-ui.html
   packages-to-scan:
     - com.cap.identity.controller
+

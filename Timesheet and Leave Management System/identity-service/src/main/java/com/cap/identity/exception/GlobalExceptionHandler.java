@@ -26,9 +26,9 @@ public class GlobalExceptionHandler {
     }
 
     // ── 409 — email/code already exists ─────────────────
-    @ExceptionHandler(EmailAlreadyExistsException.class)
+    @ExceptionHandler({EmailAlreadyExistsException.class, UserAlreadyExistsException.class})
     public ResponseEntity<ErrorResponseDTO> handleConflict(
-            EmailAlreadyExistsException ex,
+            RuntimeException ex,
             HttpServletRequest request) {
 
         return build(HttpStatus.CONFLICT,

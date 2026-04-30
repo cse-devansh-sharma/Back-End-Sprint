@@ -16,27 +16,21 @@ public class CorsConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allowed origins — add your production domain here when deploying
         config.setAllowedOrigins(List.of(
-                "http://localhost:3000",   // React dev
-                "http://localhost:8080"    // Gateway itself (Swagger UI)
-//              "http://localhost:4200",   // Angular dev
-//              "http://localhost:5173"    // Vite dev
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://localhost:8080"
         ));
 
-        // Allowed HTTP methods
         config.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
         ));
 
-        // Allowed headers
         config.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                "Accept",
-                "X-Requested-With",
-                "Origin"
+                "Authorization", "Content-Type", "Accept", "X-Requested-With", "Origin"
         ));
+
+        config.setExposedHeaders(List.of("Authorization"));
 
         // Allow credentials (cookies, auth headers)
         config.setAllowCredentials(true);

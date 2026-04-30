@@ -458,6 +458,20 @@ public class LeaveService {
     }
 
     // ════════════════════════════════════════════════
+    // GET ACTIVE LEAVE TYPES
+    // ════════════════════════════════════════════════
+    public List<java.util.Map<String, Object>> getActiveLeaveTypes() {
+        return leaveTypeRepository.findByIsActive(true)
+                .stream()
+                .map(lt -> java.util.Map.<String, Object>of(
+                        "id",   lt.getId(),
+                        "code", lt.getCode(),
+                        "name", lt.getName()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    // ════════════════════════════════════════════════
     // ALLOCATE INITIAL LEAVES
     // ════════════════════════════════════════════════
     @Transactional

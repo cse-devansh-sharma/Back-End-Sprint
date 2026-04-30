@@ -7,6 +7,7 @@ import com.cap.identity.enums.Role;
 import com.cap.identity.enums.Status;
 import com.cap.identity.exception.InvalidCredentialsException;
 import com.cap.identity.exception.UserAlreadyExistsException;
+import com.cap.identity.repository.PasswordResetTokenRepository;
 import com.cap.identity.repository.UserRepository;
 import com.cap.identity.util.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,12 @@ class AuthServiceTest {
 
     @Mock
     private JwtUtil jwtUtil;
+
+    @Mock
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Mock
+    private EmailService emailService;
 
     @Mock
     private LeaveServiceClient leaveServiceClient;
@@ -201,21 +208,41 @@ class AuthServiceTest {
         ForgotPasswordDTO request = new ForgotPasswordDTO();
         request.setEmail("test@test.com");
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
+        when(passwordResetTokenRepository.findAll()).thenReturn(Collections.emptyList());
+        when(passwordResetTokenRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(emailService.sendPasswordResetToken(anyString(), anyString())).thenReturn("test-token");
 
-        String response = authService.forgotPassword(request);
+        ForgotPasswordResponseDTO response = authService.forgotPassword(request);
 
-        assertEquals("If this email exists, a reset link has been sent", response);
+        assertEquals("If this email exists, a reset token has been sent.", response.getMessage());
+        assertNotNull(response.getToken());
     }
 
     @Test
     void resetPassword_Success() {
         ResetPasswordDTO request = new ResetPasswordDTO();
+        request.setToken("valid-token");
         request.setNewPassword("newPassword");
         request.setConfirmPassword("newPassword");
+
+        com.cap.identity.entity.PasswordResetToken resetToken =
+                com.cap.identity.entity.PasswordResetToken.builder()
+                        .token("valid-token")
+                        .user(testUser)
+                        .expiryDate(java.time.LocalDateTime.now().plusMinutes(10))
+                        .used(false)
+                        .build();
+
+        when(passwordResetTokenRepository.findByTokenAndUsedFalseAndExpiryDateAfter(
+                anyString(), any())).thenReturn(resetToken);
+        when(passwordEncoder.encode(anyString())).thenReturn("encodedNewPassword");
+        when(userRepository.save(any())).thenReturn(testUser);
+        when(passwordResetTokenRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         String response = authService.resetPassword(request);
 
         assertEquals("Password reset successful", response);
+        assertTrue(resetToken.isUsed());
     }
 
     @Test

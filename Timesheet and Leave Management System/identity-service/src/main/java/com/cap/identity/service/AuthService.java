@@ -1,10 +1,12 @@
 package com.cap.identity.service;
 
 import com.cap.identity.dto.*;
+import com.cap.identity.entity.PasswordResetToken;
 import com.cap.identity.entity.User;
 import com.cap.identity.enums.Role;
 import com.cap.identity.enums.Status;
 import com.cap.identity.exception.*;
+import com.cap.identity.repository.PasswordResetTokenRepository;
 import com.cap.identity.repository.UserRepository;
 import com.cap.identity.util.JwtUtil;
 import com.cap.identity.client.LeaveServiceClient;
@@ -16,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +28,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final LeaveServiceClient leaveServiceClient;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
 
@@ -104,20 +109,58 @@ public class AuthService {
                 .build();
     }
 
-    public String forgotPassword(ForgotPasswordDTO request) {
+    public ForgotPasswordResponseDTO forgotPassword(ForgotPasswordDTO request) {
+        return userRepository.findByEmail(request.getEmail())
+                .map(user -> {
+                    // invalidate any existing unused tokens for this user
+                    passwordResetTokenRepository.findAll().stream()
+                            .filter(t -> t.getUser().getId().equals(user.getId()) && !t.isUsed())
+                            .forEach(t -> { t.setUsed(true); passwordResetTokenRepository.save(t); });
 
-        userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
-            System.out.println("Reset token generated for: " + user.getEmail());
-        });
+                    // generate new token — expires in 15 minutes
+                    String rawToken = UUID.randomUUID().toString().replace("-", "");
+                    PasswordResetToken resetToken = PasswordResetToken.builder()
+                            .user(user)
+                            .token(rawToken)
+                            .expiryDate(LocalDateTime.now().plusMinutes(15))
+                            .used(false)
+                            .build();
+                    passwordResetTokenRepository.save(resetToken);
 
-        return "If this email exists, a reset link has been sent";
+                    // send via email service (dev: returns token, prod: sends email)
+                    String returnedToken = emailService.sendPasswordResetToken(user.getEmail(), rawToken);
+
+                    return ForgotPasswordResponseDTO.builder()
+                            .message("If this email exists, a reset token has been sent.")
+                            .token(returnedToken) // dev mode only
+                            .build();
+                })
+                .orElse(ForgotPasswordResponseDTO.builder()
+                        .message("If this email exists, a reset token has been sent.")
+                        .token(null)
+                        .build());
     }
 
     public String resetPassword(ResetPasswordDTO request) {
-
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new InvalidCredentialsException("Passwords do not match");
         }
+
+        PasswordResetToken resetToken = passwordResetTokenRepository
+                .findByTokenAndUsedFalseAndExpiryDateAfter(request.getToken(), LocalDateTime.now());
+
+        if (resetToken == null) {
+            throw new InvalidCredentialsException("Token is invalid or has expired");
+        }
+
+        User user = resetToken.getUser();
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setFailedLoginCount(0);
+        if (user.getStatus() == Status.LOCKED) user.setStatus(Status.ACTIVE);
+        userRepository.save(user);
+
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
 
         return "Password reset successful";
     }

@@ -9,7 +9,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,7 +38,7 @@ public class AuthController {
 
     @Operation(summary = "Forgot Password", description = "Initiate password reset process")
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordDTO request) {
+    public ResponseEntity<ForgotPasswordResponseDTO> forgotPassword(@Valid @RequestBody ForgotPasswordDTO request) {
         return ResponseEntity.ok(authService.forgotPassword(request));
     }
 
@@ -55,16 +54,8 @@ public class AuthController {
 
     @Operation(summary = "Get User Profile", description = "Retrieve a user profile by ID")
     @GetMapping("/users/{id}")
-    public ResponseEntity<UserProfileDTO> getUserById(@PathVariable Long id, Authentication authentication) {
-
-        String currentUserId = authentication.getName();
-        String currentRole   = authentication.getAuthorities().iterator().next().getAuthority();
-
-      
-        if (!currentRole.equals("ROLE_ADMIN") && !currentUserId.equals(String.valueOf(id))) {
-            throw new InvalidCredentialsException("You can only view your own profile");
-        }
-
+    @PreAuthorize("hasRole('ADMIN') or #id.toString() == authentication.name")
+    public ResponseEntity<UserProfileDTO> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(authService.getUserById(id));
     }
 
