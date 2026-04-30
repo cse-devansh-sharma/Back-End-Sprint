@@ -4,3 +4,11 @@
 .sonarlint/
 *.log
 .metadata/
+.classpath
+.factorypath
+.sonarlint/
+.metadata/
+*.log
+hs_err_pid*
+replay_pid*
+nul
